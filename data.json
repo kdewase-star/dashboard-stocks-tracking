@@ -1,6 +1,1 @@
-{
-  "updatedAt": null,
-  "source": "Waiting for first GitHub Actions run",
-  "stocks": {},
-  "markets": {}
-}
+{"updatedAt":"2026-08-26T23:25:04.600150+00:00","source":"Yahoo Finance chart endpoint via GitHub Actions","stocks":{},"markets":{"NIFTY":{"last":24334.55078125,"today":0.48},"SENSEX":{"last":77656.09375,"today":0.37}}}
