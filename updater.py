@@ -1,5 +1,15 @@
-import json, time, urllib.request, urllib.parse
-from datetime import datetime, timezone
+import sys, subprocess, json, time
+from datetime import date, timedelta, datetime, timezone
+from pathlib import Path
+
+# V5.4: use the maintained unofficial NSE client. It manages NSE cookies/sessions
+# and the current package uses NSE's newer NextApi for equity history.
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "nse[server]"],
+    check=True
+)
+
+from nse import NSE
 
 WATCH = {
     "ABB": "ABB India",
@@ -9,147 +19,224 @@ WATCH = {
     "CUPID": "Cupid",
 }
 
-UNIVERSE = {
-    "RELIANCE":"Reliance Industries","TCS":"Tata Consultancy Services","HDFCBANK":"HDFC Bank",
-    "ICICIBANK":"ICICI Bank","INFY":"Infosys","SBIN":"State Bank of India","BHARTIARTL":"Bharti Airtel",
-    "ITC":"ITC","LT":"Larsen & Toubro","AXISBANK":"Axis Bank","KOTAKBANK":"Kotak Mahindra Bank",
-    "M&M":"Mahindra & Mahindra","SUNPHARMA":"Sun Pharma","MARUTI":"Maruti Suzuki",
-    "HINDUNILVR":"Hindustan Unilever","TITAN":"Titan Company","HAL":"Hindustan Aeronautics",
-    "ADANIENT":"Adani Enterprises","ADANIPORTS":"Adani Ports","NTPC":"NTPC","POWERGRID":"Power Grid",
-    "ONGC":"ONGC","COALINDIA":"Coal India","TATASTEEL":"Tata Steel","JSWSTEEL":"JSW Steel",
-    "HINDALCO":"Hindalco","TRENT":"Trent","ETERNAL":"Eternal","INDIGO":"InterGlobe Aviation",
-    "BAJFINANCE":"Bajaj Finance","BAJAJFINSV":"Bajaj Finserv","WIPRO":"Wipro","TECHM":"Tech Mahindra",
-    "HCLTECH":"HCL Technologies","LTIM":"LTIMindtree","ASIANPAINT":"Asian Paints",
-    "ULTRACEMCO":"UltraTech Cement","TATAMOTORS":"Tata Motors","TATACONSUM":"Tata Consumer",
-    "NESTLEIND":"Nestle India","CIPLA":"Cipla","DRREDDY":"Dr Reddy's Laboratories",
-    "EICHERMOT":"Eicher Motors","HEROMOTOCO":"Hero MotoCorp","TVSMOTOR":"TVS Motor",
-    "INDUSINDBK":"IndusInd Bank","PNB":"Punjab National Bank","CANBK":"Canara Bank",
-    "IRFC":"IRFC","RVNL":"Rail Vikas Nigam","IREDA":"IREDA","NHPC":"NHPC","HUDCO":"HUDCO",
-    "SUZLON":"Suzlon Energy","YESBANK":"Yes Bank","IDEA":"Vodafone Idea","IOC":"Indian Oil",
-    "GAIL":"GAIL","BHEL":"BHEL"
-}
-ALL = dict(UNIVERSE)
-ALL.update(WATCH)
+# Keep the first reliable version focused on the personal list.
+# Market Opportunities are populated from NSE's own live gainer/loser/index
+# endpoints where possible; this avoids hundreds of individual quote calls.
 
-UA = "Mozilla/5.0 (compatible; KunalStockDashboard/5.3)"
-
-def fetch_json(url, timeout=15):
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        if r.status != 200:
-            raise RuntimeError(f"HTTP {r.status}")
-        return json.loads(r.read().decode("utf-8"))
-
-def batch_live(symbols):
-    base = "http://65.0.104.9/stock/list?symbols=" + urllib.parse.quote(",".join(symbols), safe=",.-&") + "&res=num"
-    return fetch_json(base, timeout=20)
-
-def yahoo_chart(sym):
-    q = urllib.parse.quote(sym + ".NS", safe="")
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{q}?range=10y&interval=1d&events=div%2Csplits"
-    return fetch_json(url, timeout=12)["chart"]["result"][0]
-
-def pct(a,b):
-    return round((a/b-1)*100,2) if b else None
-
-def enrich_with_history(sym, live):
+def num(v):
     try:
-        r = yahoo_chart(sym)
-        ts = r.get("timestamp",[])
-        q = r.get("indicators",{}).get("quote",[{}])[0]
-        closes = q.get("close",[])
-        vols = q.get("volume",[])
-        pts=[{"t":int(t),"c":round(float(c),4),"v":int(vols[i] or 0) if i<len(vols) else 0}
-             for i,(t,c) in enumerate(zip(ts,closes)) if c is not None]
-        if len(pts)<2:
-            raise RuntimeError("not enough history")
-        last=float(live.get("last_price") or pts[-1]["c"])
-        prev=float(live.get("last_price") or pts[-2]["c"]) - float(live.get("change") or 0)
-        def old(days):
-            target=time.time()-days*86400
-            x=pts[0]
-            for p in pts:
-                if p["t"]<=target:x=p
-                else:break
-            return x["c"]
-        year=pts[-252:]
-        high=max(x["c"] for x in year);low=min(x["c"] for x in year)
-        m1=pct(last,old(30));m3=pct(last,old(91))
-        score=max(0,min(100,(live.get("percent_change") or 0)*3+max(0,m1)*1.5+max(0,m3)*.5+10))
-        return {
-            "name": live.get("company_name") or WATCH.get(sym) or UNIVERSE.get(sym) or sym,
-            "last": last, "prev": prev,
-            "today": float(live.get("percent_change") or 0),
-            "m1":m1,"m3":m3,"m6":pct(last,old(182)),"m9":pct(last,old(274)),
-            "y1":pct(last,old(365)),"y5":pct(last,old(1826)),
-            "high":high,"low":low,"volume":live.get("volume") or pts[-1]["v"],
-            "score":round(score,1),"marketCap":live.get("market_cap"),
-            "pe":live.get("pe_ratio"),"sector":live.get("sector"),
-            "points":pts
-        }
+        if v is None or v == "":
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+def find(d, *keys):
+    if not isinstance(d, dict):
+        return None
+    for k in keys:
+        if k in d and d[k] not in (None, ""):
+            return d[k]
+    return None
+
+def historical_points(rows):
+    out = []
+    for r in rows or []:
+        close = find(r, "CH_CLOSING_PRICE", "CH_LAST_TRADED_PRICE")
+        ts = find(r, "CH_TIMESTAMP", "mTIMESTAMP")
+        qty = find(r, "CH_TOT_TRADED_QTY")
+        if close is None or ts is None:
+            continue
+        try:
+            # YYYY-MM-DD is preferred; otherwise keep the row index as a stable
+            # chart position and use the original timestamp string.
+            import datetime as dt
+            if isinstance(ts, str) and "-" in ts:
+                t = int(dt.datetime.strptime(ts[:10], "%Y-%m-%d").replace(tzinfo=dt.timezone.utc).timestamp())
+            else:
+                t = len(out)
+        except Exception:
+            t = len(out)
+        out.append({"t": t, "c": round(float(close), 4), "v": int(float(qty or 0))})
+    return out
+
+def pct(a, b):
+    return round((a / b - 1) * 100, 2) if a is not None and b else None
+
+def old_close(points, days):
+    if not points:
+        return None
+    target = time.time() - days * 86400
+    candidate = points[0]["c"]
+    for p in points:
+        if p["t"] <= target:
+            candidate = p["c"]
+        else:
+            break
+    return candidate
+
+def quote_row(nse, sym, name):
+    q = nse.quote(sym)
+    meta = q.get("metaData", {})
+    depth = q.get("tradeInfo", {})
+    price = q.get("priceInfo", {})
+    sec = q.get("secInfo", {})
+
+    last = num(depth.get("lastPrice")) or num(q.get("orderBook", {}).get("lastPrice")) or num(meta.get("lastPrice"))
+    prev = num(meta.get("previousClose"))
+    today = num(meta.get("pChange"))
+    high = num(price.get("yearHigh"))
+    low = num(price.get("yearLow"))
+    volume = num(depth.get("totalTradedVolume"))
+
+    # NSE's current historical endpoint is used by nse 3.x / NextApi.
+    from_date = date.today() - timedelta(days=365*10 + 20)
+    rows = nse.fetch_equity_historical_data(sym, from_date=from_date, to_date=date.today())
+    points = historical_points(rows)
+
+    if points:
+        if last is None:
+            last = points[-1]["c"]
+        if prev is None and len(points) > 1:
+            prev = points[-2]["c"]
+        if high is None:
+            high = max(p["c"] for p in points[-252:])
+        if low is None:
+            low = min(p["c"] for p in points[-252:])
+        if volume is None:
+            volume = points[-1]["v"]
+
+    if today is None:
+        today = pct(last, prev)
+
+    all_time = points[0]["c"] if points else None
+    score = None
+    m1 = pct(last, old_close(points,30))
+    m3 = pct(last, old_close(points,91))
+
+    if today is not None:
+        score = max(0, min(100,
+            35 + today*3 +
+            max(0,m1 or 0)*1.5 +
+            max(0,m3 or 0)*0.5 +
+            (5 if high and last >= high*0.97 else 0)
+        ))
+
+    return {
+        "name": name,
+        "last": last,
+        "prev": prev,
+        "today": today,
+        "m1": m1,
+        "m3": m3,
+        "m6": pct(last, old_close(points,182)),
+        "m9": pct(last, old_close(points,274)),
+        "y1": pct(last, old_close(points,365)),
+        "y5": pct(last, old_close(points,1826)),
+        "high": high,
+        "low": low,
+        "volume": volume,
+        "score": round(score,1) if score is not None else None,
+        "marketCap": num(depth.get("totalMarketCap")),
+        "pe": num(sec.get("pdSymbolPe")),
+        "sector": sec.get("sector") or sec.get("industryInfo"),
+        "lastUpdateTime": q.get("lastUpdateTime"),
+        "points": points,
+    }
+
+def simple_market_screen(nse):
+    out = {}
+    # NIFTY 500 list is one NSE request and generally contains current change
+    # information. We use it as a broad-market candidate pool rather than
+    # individually quoting hundreds of stocks.
+    try:
+        d = nse.listEquityStocksByIndex(index="NIFTY 500")
+        rows = d.get("data", []) if isinstance(d, dict) else []
+        for r in rows:
+            sym = r.get("symbol")
+            if not sym:
+                continue
+            last = num(find(r,"lastPrice","ltp","last"))
+            ch = num(find(r,"pChange","percentChange","change"))
+            if last is None:
+                continue
+            out[sym] = {
+                "name": r.get("meta") or r.get("symbolInfo") or sym,
+                "last": last, "today": ch,
+                "high": num(find(r,"yearHigh","52WeekHigh")),
+                "low": num(find(r,"yearLow","52WeekLow")),
+                "score": None, "points": []
+            }
     except Exception as e:
-        # Live data is still useful even if historical enrichment fails.
-        return {
-            "name": live.get("company_name") or WATCH.get(sym) or UNIVERSE.get(sym) or sym,
-            "last":live.get("last_price"),"prev":None,
-            "today":live.get("percent_change"),"m1":None,"m3":None,"m6":None,
-            "m9":None,"y1":None,"y5":None,"high":None,"low":None,
-            "volume":live.get("volume"),"score":None,
-            "marketCap":live.get("market_cap"),"pe":live.get("pe_ratio"),
-            "sector":live.get("sector"),"points":[],"historyError":str(e)
-        }
+        print("NIFTY 500 screen unavailable:", repr(e))
+
+    # Add official NSE live volume gainers if available.
+    try:
+        vg = nse.liveVolumeGainers()
+        for r in vg.get("data", [])[:20]:
+            sym = r.get("symbol")
+            if sym:
+                out.setdefault(sym, {
+                    "name": r.get("symbol") or sym,
+                    "last": num(find(r,"ltp","lastPrice")),
+                    "today": num(find(r,"pChange","percentChange")),
+                    "high": None, "low": None, "score": None, "points": []
+                })
+    except Exception as e:
+        print("volume-gainer screen unavailable:", repr(e))
+    return out
 
 def main():
-    symbols=list(ALL.keys())
-    live={}
-    # Batch requests, 20 symbols at a time, to minimize rate-limit exposure.
-    for i in range(0,len(symbols),20):
-        batch=symbols[i:i+20]
+    Path("nse_cache").mkdir(exist_ok=True)
+
+    with NSE("nse_cache", server=True, timeout=15) as nse:
+        stocks = {}
+        failures = []
+
+        # Five personal stocks only: deliberately slow/controlled rather than
+        # hammering NSE. The package itself throttles NSE requests.
+        for sym, name in WATCH.items():
+            try:
+                print("Fetching", sym)
+                stocks[sym] = quote_row(nse, sym, name)
+                print("OK", sym, stocks[sym]["last"])
+            except Exception as e:
+                failures.append(f"{sym}: {e!r}")
+                print("FAIL", sym, repr(e))
+
+        if not any(stocks.get(s, {}).get("last") is not None for s in WATCH):
+            raise RuntimeError(
+                "NSE returned no usable personal stock quotes. "
+                + " | ".join(failures)
+            )
+
+        opportunities = simple_market_screen(nse)
+
+        # Preserve a previous good snapshot if one or more symbols temporarily
+        # fail. Never replace a good personal stock with an empty record.
+        previous = {}
         try:
-            j=batch_live(batch)
-            for item in j.get("stocks",[]):
-                sym=item.get("symbol")
-                if sym: live[sym]=item
-            print(f"Batch {i//20+1}: received {len(j.get('stocks',[]))}/{len(batch)}")
-        except Exception as e:
-            print(f"Batch failed: {e}")
-        time.sleep(1)
+            previous = json.loads(Path("data.json").read_text(encoding="utf-8"))
+        except Exception:
+            pass
 
-    stocks={}
-    for sym,item in live.items():
-        stocks[sym]=enrich_with_history(sym,item)
+        for sym in WATCH:
+            if stocks.get(sym, {}).get("last") is None and previous.get("stocks", {}).get(sym):
+                stocks[sym] = previous["stocks"][sym]
 
-    personal_ok=[s for s in WATCH if s in stocks and stocks[s].get("last") is not None]
-    if not personal_ok:
-        raise RuntimeError(
-            "The batch Indian-stock API returned no usable personal stocks. "
-            "Existing data.json was NOT replaced."
-        )
+        out = {
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "source": "NSE India via NseIndiaApi (unofficial client with cookie/session handling)",
+            "personalStocksUpdated": [s for s in WATCH if stocks.get(s, {}).get("last") is not None],
+            "stockFailures": failures,
+            "stocks": stocks,
+            "markets": {},
+            "opportunities": opportunities,
+        }
 
-    # Preserve previous data if the batch source returns only a partial snapshot.
-    try:
-        with open("data.json","r",encoding="utf-8") as f:
-            previous=json.load(f)
-    except Exception:
-        previous={}
+        Path("data.json").write_text(json.dumps(out, separators=(",",":")), encoding="utf-8")
+        print("Published personal stocks:", out["personalStocksUpdated"])
+        print("Opportunity candidates:", len(opportunities))
 
-    # Don't overwrite good historical data with a tiny partial response.
-    if len(stocks) < 5 and previous.get("stocks"):
-        for sym,old in previous["stocks"].items():
-            if sym not in stocks:
-                stocks[sym]=old
-
-    out={
-        "updatedAt":datetime.now(timezone.utc).isoformat(),
-        "source":"Indian Stock Market API batch endpoint; historical enrichment via public chart endpoint",
-        "personalStocksUpdated":personal_ok,
-        "stocks":stocks,
-        "markets":{}
-    }
-    # The batch endpoint is stock-focused; index values are optional.
-    with open("data.json","w",encoding="utf-8") as f:
-        json.dump(out,f,separators=(",",":"))
-    print(f"Published {len(stocks)} stocks; personal stocks OK {len(personal_ok)}/5.")
-
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
