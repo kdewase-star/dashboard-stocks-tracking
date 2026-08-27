@@ -5,1099 +5,351 @@ import time
 from datetime import date, timedelta, datetime, timezone
 from pathlib import Path
 
-# V5.8
-# Historical stock-data fix
-# Keeps:
-# - ABB / BDL / BPCL / BEL / CUPID
-# - NIFTY 50
-# - SENSEX
-# - NIFTY 500 opportunities
-
 subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-q",
-        "nse[server]",
-        "bse",
-        "requests"
-    ],
-    check=True
+    [sys.executable, "-m", "pip", "install", "-q", "nse[server]", "bse", "requests"],
+    check=True,
 )
 
 from nse import NSE
-
 
 WATCH = {
     "ABB": "ABB India",
     "BDL": "Bharat Dynamics",
     "BPCL": "BPCL",
     "BEL": "Bharat Electronics",
-    "CUPID": "Cupid"
+    "CUPID": "Cupid",
 }
 
-
-def num(value):
+def num(v):
     try:
-        if value is None or value == "":
-            return None
-        return float(value)
+        return float(v) if v not in (None, "") else None
     except Exception:
         return None
 
+def pct(a, b):
+    return round((a / b - 1) * 100, 2) if a is not None and b not in (None, 0) else None
 
-def find(data, *keys):
-    if not isinstance(data, dict):
-        return None
+def split_chunks(start, end, max_days=100):
+    out = []
+    cur = start
+    while cur <= end:
+        nxt = min(cur + timedelta(days=max_days - 1), end)
+        out.append((cur, nxt))
+        cur = nxt + timedelta(days=1)
+    return out
 
-    for key in keys:
-        if data.get(key) not in (None, ""):
-            return data[key]
-
-    return None
-
-
-def pct(current, previous):
-    if current is None or previous in (None, 0):
-        return None
-
-    return round(
-        (current / previous - 1) * 100,
-        2
-    )
-
-
-# =========================================================
-# HISTORICAL DATA
-# =========================================================
-
-def historical_points(rows):
-
-    # NSE may return:
-    #   list
-    #   {"data": [...]}
-    #   {"Data": [...]}
-    #   {"records": [...]}
-
+def normalize_history(rows):
     if isinstance(rows, dict):
-
-        rows = (
-            rows.get("data")
-            or rows.get("Data")
-            or rows.get("records")
-            or rows.get("rows")
-            or []
-        )
-
+        rows = rows.get("data") or rows.get("Data") or rows.get("records") or []
     if not isinstance(rows, list):
-        rows = []
-
-    points = []
-
+        return []
+    out = []
     for row in rows:
-
         if not isinstance(row, dict):
             continue
-
-        close = find(
-            row,
-            "CH_CLOSING_PRICE",
-            "CH_LAST_TRADED_PRICE",
-            "close",
-            "Close",
-            "CLOSE"
-        )
-
-        timestamp = find(
-            row,
-            "CH_TIMESTAMP",
-            "mTIMESTAMP",
-            "timestamp",
-            "date",
-            "Date"
-        )
-
-        volume = find(
-            row,
-            "CH_TOT_TRADED_QTY",
-            "volume",
-            "Volume"
-        )
-
-        if close is None:
+        close = row.get("CH_CLOSING_PRICE")
+        ts = row.get("CH_TIMESTAMP") or row.get("mTIMESTAMP")
+        if close is None or ts is None:
             continue
-
         try:
-            close = float(close)
-        except Exception:
-            continue
-
-        try:
-            volume = int(
-                float(volume or 0)
-            )
-        except Exception:
-            volume = 0
-
-        # Convert date to Unix timestamp
-        try:
-
             import datetime as dt
-
-            text = str(timestamp)
-
-            if "-" in text:
-
-                parsed = dt.datetime.strptime(
-                    text[:10],
-                    "%Y-%m-%d"
-                )
-
-                timestamp_value = int(
-                    parsed.replace(
-                        tzinfo=dt.timezone.utc
-                    ).timestamp()
-                )
-
-            else:
-                timestamp_value = len(points)
-
+            s = str(ts)
+            try:
+                d = dt.datetime.strptime(s[:10], "%Y-%m-%d").replace(tzinfo=dt.timezone.utc)
+            except Exception:
+                d = dt.datetime.strptime(s[:11].strip(), "%d-%b-%Y").replace(tzinfo=dt.timezone.utc)
+            t = int(d.timestamp())
         except Exception:
-
-            timestamp_value = len(points)
-
-        points.append(
-            {
-                "t": timestamp_value,
-                "c": round(close, 4),
-                "v": volume
-            }
-        )
-
-    points.sort(
-        key=lambda x: x["t"]
-    )
-
-    return points
-
+            continue
+        try:
+            vol = int(float(row.get("CH_TOT_TRADED_QTY") or 0))
+        except Exception:
+            vol = 0
+        out.append({"t": t, "date": d.date().isoformat(), "c": float(close), "v": vol})
+    dedup = {x["date"]: x for x in out}
+    return sorted(dedup.values(), key=lambda x: x["t"])
 
 def old_close(points, days):
-
     if not points:
         return None
-
-    target = (
-        time.time()
-        - days * 86400
-    )
-
+    target = time.time() - days * 86400
     candidate = points[0]["c"]
-
-    for point in points:
-
-        if point["t"] <= target:
-            candidate = point["c"]
+    for p in points:
+        if p["t"] <= target:
+            candidate = p["c"]
         else:
             break
-
     return candidate
 
+def fetch_history_direct(symbol, from_date, to_date):
+    """
+    Direct NSE NextApi historical fetch in <=100-day chunks.
+    This deliberately avoids a single multi-year request.
+    """
+    import requests
 
-# =========================================================
-# STOCK QUOTE
-# =========================================================
-
-def quote_row(nse, symbol, name):
-
-    quote = nse.quote(symbol)
-
-    meta = quote.get(
-        "metaData",
-        {}
-    )
-
-    price = quote.get(
-        "priceInfo",
-        {}
-    )
-
-    trade = quote.get(
-        "tradeInfo",
-        {}
-    )
-
-    security = quote.get(
-        "secInfo",
-        {}
-    )
-
-    last = (
-        num(trade.get("lastPrice"))
-        or num(
-            quote
-            .get("orderBook", {})
-            .get("lastPrice")
-        )
-        or num(meta.get("lastPrice"))
-    )
-
-    previous = num(
-        meta.get("previousClose")
-    )
-
-    today = num(
-        meta.get("pChange")
-    )
-
-    high = num(
-        price.get("yearHigh")
-    )
-
-    low = num(
-        price.get("yearLow")
-    )
-
-    volume = num(
-        trade.get("totalTradedVolume")
-    )
-
-    points = []
-
-    # -----------------------------------------------------
-    # FETCH 10 YEARS OF HISTORY
-    # -----------------------------------------------------
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.nseindia.com/",
+        "Accept-Language": "en-IN,en;q=0.9",
+    })
 
     try:
+        s.get("https://www.nseindia.com/", timeout=15)
+        all_rows = []
 
-        from_date = (
-            date.today()
-            - timedelta(
-                days=3650 + 30
+        for c_from, c_to in split_chunks(from_date, to_date, 100):
+            r = s.get(
+                "https://www.nseindia.com/NextApi/apiClient/GetQuoteApi",
+                params={
+                    "functionName": "getHistoricalTradeData",
+                    "symbol": symbol,
+                    "series": "EQ",
+                    "fromDate": c_from.strftime("%d-%m-%Y"),
+                    "toDate": c_to.strftime("%d-%m-%Y"),
+                },
+                timeout=20,
             )
-        )
+            r.raise_for_status()
+            payload = r.json()
+            rows = payload.get("data") if isinstance(payload, dict) else payload
+            if isinstance(rows, list):
+                all_rows.extend(rows)
 
-        rows = nse.fetch_equity_historical_data(
-            symbol,
-            from_date=from_date,
-            to_date=date.today()
-        )
+            # Be polite to NSE and avoid rapid-fire calls.
+            time.sleep(0.25)
 
-        points = historical_points(rows)
+        points = normalize_history(all_rows)
+        print(f"Direct history {symbol}: {len(points)} points")
+        return points
 
-        print(
-            "Historical",
-            symbol,
-            "points:",
-            len(points)
-        )
+    except Exception as e:
+        print(f"Direct history failed {symbol}: {e!r}")
+        return []
 
-    except Exception as error:
+    finally:
+        s.close()
 
-        print(
-            "Historical data unavailable for",
-            symbol,
-            repr(error)
-        )
+def quote_row(nse, symbol, name, previous=None):
+    q = nse.quote(symbol)
+    meta = q.get("metaData", {})
+    trade = q.get("tradeInfo", {})
+    price = q.get("priceInfo", {})
+    sec = q.get("secInfo", {})
 
-    # -----------------------------------------------------
-    # USE HISTORY WHEN AVAILABLE
-    # -----------------------------------------------------
+    last = num(trade.get("lastPrice")) or num(meta.get("lastPrice"))
+    prev = num(meta.get("previousClose"))
+    today = num(meta.get("pChange"))
+    high = num(price.get("yearHigh"))
+    low = num(price.get("yearLow"))
+    volume = num(trade.get("totalTradedVolume"))
+
+    # History is fetched only when missing or too short. This keeps the 5-minute
+    # updates lightweight after the initial successful history build.
+    points = []
+    existing = (previous or {}).get("points") or []
+    history_ok = len(existing) >= 300
+
+    if history_ok:
+        points = existing
+    else:
+        try:
+            points = fetch_history_direct(
+                symbol,
+                date.today() - timedelta(days=3650),
+                date.today(),
+            )
+        except Exception as e:
+            print(f"History exception {symbol}: {e!r}")
 
     if points:
-
         if last is None:
             last = points[-1]["c"]
-
-        if previous is None and len(points) > 1:
-            previous = points[-2]["c"]
-
-        one_year = points[-252:]
-
-        if high is None and one_year:
-            high = max(
-                x["c"]
-                for x in one_year
-            )
-
-        if low is None and one_year:
-            low = min(
-                x["c"]
-                for x in one_year
-            )
-
+        if prev is None and len(points) > 1:
+            prev = points[-2]["c"]
+        year = points[-252:]
+        if high is None and year:
+            high = max(p["c"] for p in year)
+        if low is None and year:
+            low = min(p["c"] for p in year)
         if volume is None:
             volume = points[-1]["v"]
 
     if today is None:
-        today = pct(
-            last,
-            previous
-        )
+        today = pct(last, prev)
 
-    # -----------------------------------------------------
-    # PERFORMANCE
-    # -----------------------------------------------------
-
-    m1 = pct(
-        last,
-        old_close(points, 30)
-    )
-
-    m3 = pct(
-        last,
-        old_close(points, 91)
-    )
-
-    m6 = pct(
-        last,
-        old_close(points, 182)
-    )
-
-    m9 = pct(
-        last,
-        old_close(points, 274)
-    )
-
-    y1 = pct(
-        last,
-        old_close(points, 365)
-    )
-
-    y5 = pct(
-        last,
-        old_close(points, 1826)
-    )
-
-    # -----------------------------------------------------
-    # SCORE
-    # -----------------------------------------------------
-
-    score = None
-
-    if today is not None:
-
-        score = max(
-            0,
-            min(
-                100,
-                35
-                + today * 3
-                + max(0, m1 or 0) * 1.5
-                + max(0, m3 or 0) * 0.5
-                + (
-                    5
-                    if (
-                        high
-                        and last
-                        and last >= high * 0.97
-                    )
-                    else 0
-                )
-            )
-        )
+    m1 = pct(last, old_close(points, 30))
+    m3 = pct(last, old_close(points, 91))
+    m6 = pct(last, old_close(points, 182))
+    m9 = pct(last, old_close(points, 274))
+    y1 = pct(last, old_close(points, 365))
+    y5 = pct(last, old_close(points, 1826))
 
     return {
-
         "name": name,
-
         "last": last,
-
-        "prev": previous,
-
+        "prev": prev,
         "today": today,
-
         "m1": m1,
-
         "m3": m3,
-
         "m6": m6,
-
         "m9": m9,
-
         "y1": y1,
-
         "y5": y5,
-
         "high": high,
-
         "low": low,
-
         "volume": volume,
-
-        "score": (
-            round(score, 1)
-            if score is not None
-            else None
-        ),
-
-        "marketCap": num(
-            trade.get(
-                "totalMarketCap"
-            )
-        ),
-
-        "pe": num(
-            security.get(
-                "pdSymbolPe"
-            )
-        ),
-
-        "sector": (
-            security.get("sector")
-            or security.get(
-                "industryInfo"
-            )
-        ),
-
-        "lastUpdateTime":
-            quote.get(
-                "lastUpdateTime"
-            ),
-
-        "points": points
+        "marketCap": num(trade.get("totalMarketCap")),
+        "pe": num(sec.get("pdSymbolPe")),
+        "sector": sec.get("sector") or sec.get("industryInfo"),
+        "lastUpdateTime": q.get("lastUpdateTime"),
+        "points": points,
     }
-
-
-# =========================================================
-# NIFTY 500 OPPORTUNITIES
-# =========================================================
-
-def simple_market_screen(nse):
-
-    result = {}
-
-    try:
-
-        data = (
-            nse.listEquityStocksByIndex(
-                index="NIFTY 500"
-            )
-        )
-
-        rows = (
-            data.get("data", [])
-            if isinstance(data, dict)
-            else []
-        )
-
-        for row in rows:
-
-            if not isinstance(row, dict):
-                continue
-
-            symbol = row.get(
-                "symbol"
-            )
-
-            if not symbol:
-                continue
-
-            last = num(
-                find(
-                    row,
-                    "lastPrice",
-                    "ltp",
-                    "last"
-                )
-            )
-
-            change = num(
-                find(
-                    row,
-                    "pChange",
-                    "percentChange",
-                    "change"
-                )
-            )
-
-            if last is None:
-                continue
-
-            result[symbol] = {
-
-                "name": (
-                    row.get("meta")
-                    or row.get(
-                        "symbolInfo"
-                    )
-                    or symbol
-                ),
-
-                "last": last,
-
-                "today": change,
-
-                "high": num(
-                    find(
-                        row,
-                        "yearHigh",
-                        "52WeekHigh"
-                    )
-                ),
-
-                "low": num(
-                    find(
-                        row,
-                        "yearLow",
-                        "52WeekLow"
-                    )
-                ),
-
-                "score": None,
-
-                "points": []
-            }
-
-    except Exception as error:
-
-        print(
-            "NIFTY 500 screen unavailable:",
-            repr(error)
-        )
-
-    return result
-
-
-# =========================================================
-# NIFTY 50
-# =========================================================
 
 def fetch_nifty50():
-
     import requests
-
-    session = requests.Session()
-
-    session.headers.update(
-        {
-            "User-Agent":
-                "Mozilla/5.0",
-
-            "Accept":
-                "application/json, text/plain, */*",
-
-            "Referer":
-                "https://www.nseindia.com/"
-        }
-    )
-
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.nseindia.com/",
+    })
     try:
-
-        session.get(
-            "https://www.nseindia.com/",
-            timeout=15
-        )
-
-        response = session.get(
+        s.get("https://www.nseindia.com/", timeout=15)
+        r = s.get(
             "https://www.nseindia.com/api/equity-stock-indices",
-            params={
-                "index": "NIFTY 50"
-            },
-            timeout=15
+            params={"index": "NIFTY 50"},
+            timeout=15,
         )
-
-        response.raise_for_status()
-
-        payload = response.json()
-
-        if isinstance(payload, dict):
-
-            rows = (
-                payload.get("data")
-                or payload.get("Table")
-                or []
-            )
-
-        elif isinstance(payload, list):
-
-            rows = payload
-
-        else:
-
-            rows = []
-
+        r.raise_for_status()
+        p = r.json()
+        rows = p.get("data", p.get("Table", [])) if isinstance(p, dict) else p
         if not rows:
             return None
-
         row = rows[0]
-
-        if not isinstance(row, dict):
-            return None
-
-        last = num(
-            find(
-                row,
-                "last",
-                "lastPrice",
-                "ltp",
-                "indexValue"
-            )
-        )
-
-        previous = num(
-            find(
-                row,
-                "previousClose",
-                "prevClose",
-                "prev_close"
-            )
-        )
-
-        change = num(
-            find(
-                row,
-                "percentChange",
-                "pChange"
-            )
-        )
-
+        last = num(row.get("last")) or num(row.get("lastPrice")) or num(row.get("ltp")) or num(row.get("indexValue"))
+        prev = num(row.get("previousClose")) or num(row.get("prevClose"))
         if last is None:
             return None
-
-        if change is None:
-            change = pct(
-                last,
-                previous
-            )
-
-        return {
-
-            "last": last,
-
-            "prev": previous,
-
-            "today": change,
-
-            "source": "NSE"
-        }
-
-    except Exception as error:
-
-        print(
-            "NIFTY 50 unavailable:",
-            repr(error)
-        )
-
+        return {"last": last, "prev": prev, "today": pct(last, prev), "source": "NSE"}
+    except Exception as e:
+        print("NIFTY 50 unavailable:", repr(e))
         return None
-
     finally:
-
-        session.close()
-
-
-# =========================================================
-# SENSEX
-# =========================================================
+        s.close()
 
 def fetch_sensex():
-
     import requests
-
-    url = (
-        "https://query1.finance.yahoo.com/"
-        "v8/finance/chart/%5EBSESN"
-    )
-
-    headers = {
-        "User-Agent":
-            "Mozilla/5.0",
-
-        "Accept":
-            "application/json"
-    }
-
     try:
-
-        response = requests.get(
-            url,
-
-            params={
-                "range": "1d",
-                "interval": "5m"
-            },
-
-            headers=headers,
-
-            timeout=20
+        r = requests.get(
+            "https://query1.finance.yahoo.com/v8/finance/chart/%5EBSESN",
+            params={"range": "1d", "interval": "5m"},
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            timeout=20,
         )
-
-        response.raise_for_status()
-
-        payload = response.json()
-
-        result = (
-            payload
-            .get("chart", {})
-            .get("result")
-        )
-
+        r.raise_for_status()
+        result = r.json().get("chart", {}).get("result")
         if not result:
             return None
-
-        meta = result[0].get(
-            "meta",
-            {}
-        )
-
-        last = num(
-            meta.get(
-                "regularMarketPrice"
-            )
-        )
-
-        previous = num(
-            meta.get(
-                "previousClose"
-            )
-            or
-            meta.get(
-                "chartPreviousClose"
-            )
-        )
-
+        meta = result[0].get("meta", {})
+        last = num(meta.get("regularMarketPrice"))
+        prev = num(meta.get("previousClose") or meta.get("chartPreviousClose"))
         if last is None:
             return None
-
-        change = pct(
-            last,
-            previous
-        )
-
-        print(
-            "SENSEX OK",
-            round(last, 2),
-            "change:",
-            change
-        )
-
-        return {
-
-            "last": last,
-
-            "prev": previous,
-
-            "today": change,
-
-            "source":
-                "Yahoo Finance delayed"
-        }
-
-    except Exception as error:
-
-        print(
-            "SENSEX unavailable:",
-            repr(error)
-        )
-
+        return {"last": last, "prev": prev, "today": pct(last, prev), "source": "Yahoo Finance delayed"}
+    except Exception as e:
+        print("SENSEX unavailable:", repr(e))
         return None
 
-
-# =========================================================
-# MAIN
-# =========================================================
+def simple_market_screen(nse):
+    result = {}
+    try:
+        data = nse.listEquityStocksByIndex(index="NIFTY 500")
+        rows = data.get("data", []) if isinstance(data, dict) else []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            symbol = row.get("symbol")
+            if not symbol:
+                continue
+            last = num(row.get("lastPrice") or row.get("ltp") or row.get("last"))
+            change = num(row.get("pChange") or row.get("percentChange") or row.get("change"))
+            if last is not None:
+                result[symbol] = {
+                    "name": row.get("meta") or row.get("symbolInfo") or symbol,
+                    "last": last, "today": change,
+                    "high": num(row.get("yearHigh") or row.get("52WeekHigh")),
+                    "low": num(row.get("yearLow") or row.get("52WeekLow")),
+                    "score": None, "points": [],
+                }
+    except Exception as e:
+        print("NIFTY 500 screen unavailable:", repr(e))
+    return result
 
 def main():
-
-    Path(
-        "nse_cache"
-    ).mkdir(
-        exist_ok=True
-    )
-
-    Path(
-        "bse_cache"
-    ).mkdir(
-        exist_ok=True
-    )
-
-    # Previous snapshot
+    Path("nse_cache").mkdir(exist_ok=True)
+    previous = {}
     try:
-
-        previous_snapshot = json.loads(
-            Path(
-                "data.json"
-            ).read_text(
-                encoding="utf-8"
-            )
-        )
-
+        previous = json.loads(Path("data.json").read_text(encoding="utf-8"))
     except Exception:
-
-        previous_snapshot = {}
+        pass
 
     stocks = {}
-
     failures = []
-
     markets = {}
 
-    # =====================================================
-    # NSE
-    # =====================================================
-
-    with NSE(
-        "nse_cache",
-        server=True,
-        timeout=20
-    ) as nse:
-
-        # -------------------------------------------------
-        # PERSONAL STOCKS
-        # -------------------------------------------------
-
+    with NSE("nse_cache", server=True, timeout=20) as nse:
         for symbol, name in WATCH.items():
-
             try:
+                old = previous.get("stocks", {}).get(symbol)
+                stocks[symbol] = quote_row(nse, symbol, name, old)
+                print("OK", symbol, stocks[symbol].get("last"))
+            except Exception as e:
+                failures.append(f"{symbol}: {e!r}")
+                print("FAIL", symbol, repr(e))
 
-                print(
-                    "Fetching",
-                    symbol
-                )
-
-                stocks[symbol] = quote_row(
-                    nse,
-                    symbol,
-                    name
-                )
-
-                print(
-                    "OK",
-                    symbol,
-                    stocks[symbol].get(
-                        "last"
-                    )
-                )
-
-            except Exception as error:
-
-                failures.append(
-                    f"{symbol}: {error!r}"
-                )
-
-                print(
-                    "FAIL",
-                    symbol,
-                    repr(error)
-                )
-
-        # -------------------------------------------------
-        # OPPORTUNITIES
-        # -------------------------------------------------
-
-        try:
-
-            opportunities = (
-                simple_market_screen(
-                    nse
-                )
-            )
-
-        except Exception as error:
-
-            print(
-                "Opportunity screen failed:",
-                repr(error)
-            )
-
-            opportunities = {}
-
-    # =====================================================
-    # NIFTY
-    # =====================================================
+        opportunities = simple_market_screen(nse)
 
     nifty = fetch_nifty50()
-
     if nifty:
-
-        markets[
-            "NIFTY 50"
-        ] = nifty
-
-    else:
-
-        old_nifty = (
-            previous_snapshot
-            .get("markets", {})
-            .get("NIFTY 50")
-        )
-
-        if old_nifty:
-
-            markets[
-                "NIFTY 50"
-            ] = old_nifty
-
-    # =====================================================
-    # SENSEX
-    # =====================================================
+        markets["NIFTY 50"] = nifty
+    elif previous.get("markets", {}).get("NIFTY 50"):
+        markets["NIFTY 50"] = previous["markets"]["NIFTY 50"]
 
     sensex = fetch_sensex()
-
     if sensex:
+        markets["SENSEX"] = sensex
+    elif previous.get("markets", {}).get("SENSEX"):
+        markets["SENSEX"] = previous["markets"]["SENSEX"]
 
-        markets[
-            "SENSEX"
-        ] = sensex
-
-    else:
-
-        old_sensex = (
-            previous_snapshot
-            .get("markets", {})
-            .get("SENSEX")
-        )
-
-        if old_sensex:
-
-            markets[
-                "SENSEX"
-            ] = old_sensex
-
-    # =====================================================
-    # PRESERVE GOOD STOCK DATA
-    # =====================================================
-
-    for symbol in WATCH:
-
-        current = stocks.get(
-            symbol,
-            {}
-        )
-
-        if (
-            current.get("last")
-            is None
-        ):
-
-            old = (
-                previous_snapshot
-                .get("stocks", {})
-                .get(symbol)
-            )
-
-            if old:
-
-                stocks[
-                    symbol
-                ] = old
-
-    # =====================================================
-    # SAFETY CHECK
-    # =====================================================
-
-    usable = [
-
-        symbol
-
-        for symbol in WATCH
-
-        if stocks.get(
-            symbol,
-            {}
-        ).get("last") is not None
-    ]
-
+    usable = [s for s in WATCH if stocks.get(s, {}).get("last") is not None]
     if not usable:
-
-        raise RuntimeError(
-            "No usable personal stock quotes."
-        )
-
-    # =====================================================
-    # OUTPUT
-    # =====================================================
+        raise RuntimeError("No usable personal stock quotes.")
 
     output = {
-
-        "version":
-            "5.8",
-
-        "updatedAt":
-            datetime.now(
-                timezone.utc
-            ).isoformat(),
-
-        "source":
-            "NSE/BSE public delayed data",
-
-        "personalStocksUpdated":
-            usable,
-
-        "stockFailures":
-            failures,
-
-        "stocks":
-            stocks,
-
-        "markets":
-            markets,
-
-        "opportunities":
-            opportunities
+        "version": "5.8.1",
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "source": "NSE/BSE public delayed data",
+        "personalStocksUpdated": usable,
+        "stockFailures": failures,
+        "stocks": stocks,
+        "markets": markets,
+        "opportunities": opportunities,
     }
 
-    Path(
-        "data.json"
-    ).write_text(
-
-        json.dumps(
-            output,
-            separators=(
-                ",",
-                ":"
-            )
-        ),
-
-        encoding="utf-8"
+    Path("data.json").write_text(
+        json.dumps(output, separators=(",", ":")),
+        encoding="utf-8",
     )
 
-    print()
-    print(
-        "======================================"
-    )
-
-    print(
-        "V5.8 UPDATE COMPLETE"
-    )
-
-    print(
-        "======================================"
-    )
-
-    print(
-        "Personal stocks:",
-        usable
-    )
-
-    print(
-        "Historical points:"
-    )
-
-    for symbol in usable:
-
-        print(
-            " ",
-            symbol,
-            len(
-                stocks[symbol].get(
-                    "points",
-                    []
-                )
-            )
-        )
-
-    print(
-        "Markets:",
-        list(
-            markets.keys()
-        )
-    )
-
-    print(
-        "======================================")
-
+    print("========================================")
+    print("V5.8.1 UPDATE COMPLETE")
+    print("Personal stocks:", usable)
+    print("Markets:", list(markets))
+    print("Historical points:", {s: len(stocks[s].get("points", [])) for s in usable})
+    print("========================================")
 
 if __name__ == "__main__":
     main()
