@@ -535,22 +535,18 @@ def fetch_nifty50():
         session.close()
 
 
+
 def fetch_sensex():
     """
-    Robust SENSEX fetch.
+    Fetch SENSEX using Yahoo Finance's public delayed endpoint.
 
-    BSE sometimes returns:
-        dict
-    and sometimes:
-        list[dict]
-
-    Therefore we never assume the top-level response
-    is a dictionary.
+    This is used as a fallback because the BSE public endpoint
+    intermittently returns incompatible response formats or fails.
     """
 
     import requests
 
-    session = requests.Session()
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/%5EBSESN"
 
     headers = {
         "User-Agent": (
@@ -558,160 +554,68 @@ def fetch_sensex():
             "AppleWebKit/537.36 "
             "Chrome/131.0 Safari/537.36"
         ),
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.bseindia.com/",
-        "Accept-Language": "en-IN,en;q=0.9",
+        "Accept": "application/json",
     }
 
-    session.headers.update(headers)
-
     try:
-
-        url = (
-            "https://api.bseindia.com/"
-            "RealTimeBseIndiaAPI/api/"
-            "GetSensexData/w"
-        )
-
-        response = session.get(
+        response = requests.get(
             url,
-            timeout=15
+            params={
+                "range": "1d",
+                "interval": "5m",
+            },
+            headers=headers,
+            timeout=20,
         )
 
         response.raise_for_status()
 
         payload = response.json()
 
-        # BSE can return a list directly.
-        if isinstance(payload, list):
-            rows = payload
+        result = payload.get("chart", {}).get("result")
 
-        elif isinstance(payload, dict):
-
-            rows = (
-                payload.get("Table")
-                or payload.get("Data")
-                or payload.get("data")
-                or payload.get("results")
-                or []
-            )
-
-            if isinstance(rows, dict):
-                rows = [rows]
-
-        else:
-            rows = []
-
-        if not rows:
-            print(
-                "SENSEX endpoint returned no rows"
-            )
+        if not result:
+            print("SENSEX Yahoo returned no result")
             return None
 
-        # Find the first dictionary row.
-        row = None
+        meta = result[0].get("meta", {})
 
-        for candidate in rows:
-
-            if isinstance(candidate, dict):
-                row = candidate
-                break
-
-        if row is None:
-            print(
-                "SENSEX endpoint returned no dictionary row"
-            )
-            return None
-
-        last = None
-        previous = None
-        change = None
-
-        # First try common BSE field names.
         last = num(
-            find(
-                row,
-                "LTP",
-                "ltp",
-                "LastPrice",
-                "lastPrice",
-                "SensexValue",
-                "IndexValue",
-                "indexValue"
-            )
+            meta.get("regularMarketPrice")
         )
 
         previous = num(
-            find(
-                row,
-                "PrevClose",
-                "prevClose",
-                "PreviousClose",
-                "previousClose",
-                "Prev_Close"
-            )
+            meta.get("previousClose")
+            or meta.get("chartPreviousClose")
         )
 
-        change = num(
-            find(
-                row,
-                "PercentChange",
-                "percentChange",
-                "pChange",
-                "ChangePercent"
-            )
-        )
-
-        # If BSE changes field names, inspect numeric fields.
         if last is None:
-
-            for key, value in row.items():
-
-                number = num(value)
-
-                if number is None:
-                    continue
-
-                key_lower = str(key).lower()
-
-                if (
-                    "sensex" in key_lower
-                    or "indexvalue" in key_lower
-                    or key_lower in ("ltp", "last")
-                ):
-                    last = number
-                    break
-
-        if last is None:
-            print(
-                "SENSEX row found but no price field:",
-                row
-            )
+            print("SENSEX Yahoo returned no price")
             return None
 
-        if change is None:
-            change = pct(last, previous)
+        change = pct(last, previous)
+
+        print(
+            "SENSEX OK",
+            round(last, 2),
+            "change:",
+            change
+        )
 
         return {
             "last": last,
             "prev": previous,
             "today": change,
-            "source": "BSE SENSEX"
+            "source": "Yahoo Finance delayed"
         }
 
     except Exception as error:
-
         print(
-            "SENSEX live endpoint unavailable:",
+            "SENSEX Yahoo endpoint unavailable:",
             repr(error)
         )
 
         return None
-
-    finally:
-        session.close()
-
-
 def fetch_sensex_archive():
     """
     Fallback for SENSEX when the live BSE endpoint
