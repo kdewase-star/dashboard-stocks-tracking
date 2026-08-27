@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>Kunal's Stock Dashboard V5.7</title>
+<style>
+:root{--bg:#f4f6f9;--panel:#fff;--text:#17202a;--muted:#6d7783;--border:#dfe4ea;--accent:#4d6cff;--green:#13834d;--red:#c43d3d;--gold:#b57b00;--soft:#f6f8fb}
+[data-theme=dark]{--bg:#0f141d;--panel:#171e29;--text:#edf2f7;--muted:#9aa5b2;--border:#2b3544;--accent:#7890ff;--soft:#202936}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1280px;margin:auto;padding:15px}.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{margin:0;font-size:27px;letter-spacing:-.02em}.sub{font-size:12px;color:var(--muted);margin-top:4px}.actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+button,input,select{font:inherit}button{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;padding:8px 11px;cursor:pointer}
+.status{font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:999px;background:var(--panel);color:var(--muted)}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}.card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:11px}.label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.value{font-size:17px;font-weight:800;margin-top:4px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:13px;margin-bottom:12px}.panel h2{font-size:14px;margin:0 0 10px}.toolbar{display:flex;gap:7px;flex-wrap:wrap}.toolbar input{min-width:200px;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;padding:8px 10px}.toolbar select{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;padding:8px 10px}
+.hint,.note{font-size:10px;color:var(--muted);line-height:1.5;margin-top:7px}.tablebox{overflow:auto;border:1px solid var(--border);border-radius:11px}
+table{border-collapse:collapse;width:100%;min-width:1500px;font-size:11px}th{padding:9px 7px;color:var(--muted);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--panel);z-index:1}th:first-child,td:first-child{text-align:left}
+td{padding:9px 7px;border-bottom:1px solid color-mix(in srgb,var(--border) 65%,transparent);text-align:right;white-space:nowrap;vertical-align:middle}.name{text-align:left!important;font-weight:800}.ticker{display:block;font-size:9px;color:var(--muted);font-weight:500}.price{font-size:13px;font-weight:850}.up{color:var(--green);font-weight:750}.down{color:var(--red);font-weight:750}
+.cellprice{font-weight:650}.cellpct{font-size:10px;margin-top:2px}.clickstock{cursor:pointer}.clickstock:hover{background:var(--soft)}.remove{font-size:9px;padding:4px 6px}.star{font-size:15px;background:none;border:0;padding:0 4px}
+.marketgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.market{padding:10px;border:1px solid var(--border);border-radius:11px}.mname{font-size:11px;font-weight:750}.mval{font-size:17px;font-weight:850;margin-top:3px}.mchg{font-size:10px;margin-top:2px}
+.details{display:none}.details.open{display:block}.detailhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.detailtitle{font-weight:850}.detailprice{font-size:19px;font-weight:900}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}.metric{padding:8px;background:var(--soft);border-radius:8px}.metric span{display:block;font-size:8px;color:var(--muted)}.metric b{font-size:11px}.chart{width:100%;height:150px;display:block;margin-top:9px}
+.movers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.move{border:1px solid var(--border);border-radius:11px;padding:10px}.move h3{font-size:11px;margin:0 0 7px}.moveitem{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+.warn{background:#fff7df;border:1px solid #efd99b;border-radius:10px;padding:10px 12px;color:#624b00;margin-top:10px;font-size:10px;line-height:1.5}[data-theme=dark] .warn{background:#2b2515;color:#ead9a0;border-color:#5b4d24}
+@media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr)}.wrap{padding:11px}h1{font-size:22px}.metrics{grid-template-columns:repeat(2,1fr)}}@media(max-width:420px){.cards{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="head">
+  <div><h1>Kunal's Stock Dashboard <span style="font-size:12px;color:var(--accent)">V5.7</span></h1>
+  <div class="sub">Personal NSE watchlist · delayed public data · auto-refresh snapshot · free · no broker credentials</div></div>
+  <div class="actions"><span class="status"><span class="dot" id="dot"></span><span id="status">Loading…</span></span><button id="refresh">↻ Refresh</button><button id="theme">☾</button></div>
+</div>
+
+<div class="cards">
+<div class="card"><div class="label">Stocks</div><div class="value" id="count">5</div></div>
+<div class="card"><div class="label">Best Today</div><div class="value up" id="best">—</div></div>
+<div class="card"><div class="label">Worst Today</div><div class="value down" id="worst">—</div></div>
+<div class="card"><div class="label">Best Since Tracking</div><div class="value up" id="bestTrack">—</div></div>
+<div class="card"><div class="label">Market</div><div class="value" id="marketStatus">—</div></div>
+<div class="card"><div class="label">Data Updated</div><div class="value" id="updated">—</div></div>
+</div>
+
+<div class="panel"><h2>Market Overview</h2><div class="marketgrid" id="markets"></div>
+<div class="note" id="snapshot"></div></div>
+
+<div class="panel"><h2>Watchlist</h2>
+<div class="toolbar"><input id="stockInput" list="stockChoices" placeholder="Add NSE symbol e.g. TCS"><datalist id="stockChoices"></datalist><button id="add">＋ Add stock</button>
+<select id="sort"><option value="default">Sort: Default</option><option value="today">Today</option><option value="m1">1M</option><option value="y1">1Y</option><option value="track">Since Tracking</option></select>
+<select id="filter"><option value="all">Filter: All</option><option value="up">Gainers</option><option value="down">Losers</option></select></div>
+<div class="hint">You can add stocks from the broader market dataset; current price and 52W data appear immediately. Core tracked stocks also include full historical performance and charts.</div><div class="hint">⭐ is your tracked/favourite list. A stock's first available price in this browser becomes its Tracking Price.</div>
+</div>
+
+<div class="panel"><h2>Performance</h2>
+<div class="tablebox"><table><thead><tr><th>★</th><th>Stock</th><th>Tracking Price</th><th>Since Tracking</th><th>Current ₹</th><th>Today</th><th>1M</th><th>3M</th><th>6M</th><th>9M</th><th>1Y</th><th>5Y</th><th>All Time*</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="hint">Tap a stock row to open its details and chart. Each period shows the historical price and % change.</div>
+</div>
+
+<div class="panel"><h2>Stock Details</h2><div id="details"></div><div class="hint">Details are hidden until you tap a stock in Performance.</div></div>
+
+<div class="panel"><h2>Biggest Movers</h2><div class="movers"><div class="move"><h3>Top Gainers</h3><div id="gainers"></div></div><div class="move"><h3>Top Losers</h3><div id="losers"></div></div></div></div>
+
+<div class="warn"><b>Data note:</b> This free static dashboard uses delayed/public exchange data cached by GitHub Actions. It is not an exchange-certified real-time feed. If an update fails, the previous good snapshot is retained. “All Time” means the oldest historical point available in the supplied history.</div>
+</div>
+
+<script>
+const defaults=[{name:"ABB India",symbol:"ABB"},{name:"Bharat Dynamics",symbol:"BDL"},{name:"BPCL",symbol:"BPCL"},{name:"Bharat Electronics",symbol:"BEL"},{name:"Cupid",symbol:"CUPID"}];
+let stocks=JSON.parse(localStorage.getItem("ksd5-stocks")||"null")||defaults;
+let data=null;
+const fmt=v=>v==null||!isFinite(v)?"—":Number(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=v=>v==null||!isFinite(v)?"—":(v>=0?"+":"")+Number(v).toFixed(2)+"%";
+const cls=v=>v==null?"":v>=0?"up":"down";
+const trackKey=s=>`ksd5-track-${s}`;
+
+function save(){localStorage.setItem("ksd5-stocks",JSON.stringify(stocks))}
+function track(s,last){let r=JSON.parse(localStorage.getItem(trackKey(s))||"null");if(!r?.price){r={price:last,date:new Date().toISOString()};localStorage.setItem(trackKey(s),JSON.stringify(r))}return r}
+function cell(price,change){return `<div class="cellprice">${price==null?"—":"₹"+fmt(price)}</div><div class="cellpct ${cls(change)}">${pct(change)}</div>`}
+function get(s){return data?.stocks?.[s.symbol]||data?.opportunities?.[s.symbol]||null}
+function rowSort(list){
+ const k=document.getElementById("sort").value;
+ return [...list].sort((a,b)=>{if(k==="default")return 0;const A=get(a)?.[k],B=get(b)?.[k];return (B??-Infinity)-(A??-Infinity)})
+}
+function render(){
+ const list=rowSort(stocks).filter(s=>{const d=get(s),v=d?.today;const f=document.getElementById("filter").value;return f==="all"|| (f==="up"&&v>=0)||(f==="down"&&v<0)});
+ document.getElementById("count").textContent=stocks.length;
+ const rows=document.getElementById("rows");
+ rows.innerHTML=list.map(s=>{
+   const d=get(s), tr=d?.last!=null?track(s,d.last):null, since=d?.last!=null&&tr?pct((d.last/tr.price-1)*100):"—";
+   return `<tr class="clickstock" data-sym="${s.symbol}"><td><button class="star" data-star="${s.symbol}">${s.favorite?"★":"☆"}</button></td>
+   <td class="name">${d?.name||s.name}<span class="ticker">${s.symbol}</span></td>
+   <td>${tr?`₹${fmt(tr.price)}`:"—"}</td><td class="${since!=="—"?cls(parseFloat(since)):''}">${since}</td>
+   <td class="price">${d?.last!=null?"₹"+fmt(d.last):"—"}</td><td class="${cls(d?.today)}">${pct(d?.today)}</td>
+   <td>${cell(d?.m1?d.last/(1+d.m1/100):null,d?.m1)}</td><td>${cell(d?.m3?d.last/(1+d.m3/100):null,d?.m3)}</td>
+   <td>${cell(d?.m6?d.last/(1+d.m6/100):null,d?.m6)}</td><td>${cell(d?.m9?d.last/(1+d.m9/100):null,d?.m9)}</td>
+   <td>${cell(d?.y1?d.last/(1+d.y1/100):null,d?.y1)}</td><td>${cell(d?.y5?d.last/(1+d.y5/100):null,d?.y5)}</td>
+   <td>${d?.points?.length?cell(d.points[0].c,d.last&&d.points[0].c?pct((d.last/d.points[0].c-1)*100):null):"—"}</td>
+   <td><button class="remove" data-remove="${s.symbol}">Remove</button></td></tr>`;
+ }).join("");
+ document.querySelectorAll("[data-sym]").forEach(r=>r.addEventListener("click",e=>{if(e.target.closest("button"))return;openDetail(r.dataset.sym)}));
+ document.querySelectorAll("[data-star]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const s=stocks.find(x=>x.symbol===b.dataset.star);s.favorite=!s.favorite;save();render()}));
+ document.querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();stocks=stocks.filter(x=>x.symbol!==b.dataset.remove);save();render()}));
+ renderDetails();
+}
+function openDetail(sym){
+ const el=document.getElementById("detail-"+sym);if(!el)return;
+ document.querySelectorAll(".details.open").forEach(x=>{if(x!==el)x.classList.remove("open")});
+ el.classList.toggle("open");
+ if(el.classList.contains("open"))el.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function renderDetails(){
+ const box=document.getElementById("details");
+ box.innerHTML=stocks.map(s=>{
+  const d=get(s);if(!d)return `<div class="details" id="detail-${s.symbol}"><div class="note">${s.symbol}: data not available in the latest snapshot.</div></div>`;
+  const tr=track(s,d.last), since=(d.last/tr.price-1)*100;
+  return `<div class="details" id="detail-${s.symbol}"><div class="detailhead"><div><div class="detailtitle">${d.name||s.name} <span class="ticker">${s.symbol}</span></div></div><div class="detailprice">₹${fmt(d.last)} <span class="${cls(d.today)}" style="font-size:11px">${pct(d.today)}</span></div></div>
+  <div class="metrics"><div class="metric"><span>Tracking Price</span><b>₹${fmt(tr.price)}</b></div><div class="metric"><span>Since Tracking</span><b class="${cls(since)}">${pct(since)}</b></div>
+  <div class="metric"><span>52W High</span><b>₹${fmt(d.high)}</b></div><div class="metric"><span>52W Low</span><b>₹${fmt(d.low)}</b></div>
+  <div class="metric"><span>Volume</span><b>${d.volume==null?"—":Number(d.volume).toLocaleString("en-IN")}</b></div><div class="metric"><span>Previous Close</span><b>₹${fmt(d.prev)}</b></div>
+  <div class="metric"><span>Market Cap</span><b>${d.marketCap==null?"—":fmt(d.marketCap)}</b></div><div class="metric"><span>P/E</span><b>${fmt(d.pe)}</b></div></div>
+  <svg class="chart" viewBox="0 0 700 150" preserveAspectRatio="none">${spark(d.points)}</svg>
+  <div class="note">1M ${pct(d.m1)} · 3M ${pct(d.m3)} · 6M ${pct(d.m6)} · 9M ${pct(d.m9)} · 1Y ${pct(d.y1)} · 5Y ${pct(d.y5)}</div></div>`;
+ }).join("");
+}
+function spark(points){
+ const p=(points||[]).slice(-250).map(x=>Number(x.c)).filter(Number.isFinite);if(p.length<2)return "";
+ const w=700,h=150,pad=8,min=Math.min(...p),max=Math.max(...p),den=max-min||1;
+ const pts=p.map((v,i)=>`${pad+i*(w-2*pad)/(p.length-1)},${h-pad-(v-min)*(h-2*pad)/den}`).join(" ");
+ return `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/>`;
+}
+
+function populateCatalog(){
+ const merged={};
+ Object.entries(data?.stocks||{}).forEach(([sym,x])=>merged[sym]=x.name||sym);
+ Object.entries(data?.opportunities||{}).forEach(([sym,x])=>merged[sym]=x.name||sym);
+ document.getElementById("stockChoices").innerHTML=Object.entries(merged)
+   .sort((a,b)=>a[0].localeCompare(b[0]))
+   .map(([sym,name])=>`<option value="${sym}">${sym} — ${name}</option>`).join("");
+}
+
+function markets(){
+ const m=data?.markets||{}, box=document.getElementById("markets");
+ box.innerHTML=["NIFTY 50","SENSEX"].map(k=>{const x=m[k];return `<div class="market"><div class="mname">${k}</div><div class="mval">${x?.last!=null?fmt(x.last):"—"}</div><div class="mchg ${cls(x?.today)}">${pct(x?.today)}</div></div>`}).join("");
+}
+function topMovers(){
+ const arr=stocks.map(s=>({s,d:get(s)})).filter(x=>x.d?.today!=null).sort((a,b)=>b.d.today-a.d.today);
+ const item=x=>`<div class="moveitem"><span>${x.s.symbol}</span><span class="${cls(x.d.today)}">${pct(x.d.today)}</span></div>`;
+ document.getElementById("gainers").innerHTML=arr.slice(0,5).map(item).join("")||"—";
+ document.getElementById("losers").innerHTML=arr.slice(-5).reverse().map(item).join("")||"—";
+}
+async function load(){
+ document.getElementById("status").textContent="Loading…";document.getElementById("dot").style.background="var(--gold)";
+ try{
+  const r=await fetch("data.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("data.json unavailable");
+  data=await r.json(); populateCatalog();
+  document.getElementById("status").textContent="Data loaded";document.getElementById("dot").style.background="var(--green)";
+  document.getElementById("updated").textContent=data.updatedAt?new Date(data.updatedAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}):"—";
+  document.getElementById("snapshot").textContent=data.updatedAt?"Data snapshot: "+new Date(data.updatedAt).toLocaleString("en-IN")+" · GitHub Actions":"";
+  const arr=stocks.map(s=>({s,d:get(s)})).filter(x=>x.d?.today!=null);
+  const best=arr.reduce((a,b)=>!a||b.d.today>a.d.today?b:a,null),worst=arr.reduce((a,b)=>!a||b.d.today<a.d.today?b:a,null);
+  document.getElementById("best").textContent=best?best.s.symbol:"—";document.getElementById("worst").textContent=worst?worst.s.symbol:"—";
+  let bt=stocks.map(s=>{const d=get(s);if(!d?.last)return null;const t=track(s,d.last);return {s,d,v:(d.last/t.price-1)*100}}).filter(Boolean).sort((a,b)=>b.v-a.v)[0];
+  document.getElementById("bestTrack").textContent=bt?`${bt.s.symbol} ${pct(bt.v)}`:"—";
+  document.getElementById("marketStatus").textContent=(data.markets?.["NIFTY 50"]||data.markets?.["SENSEX"])?"Market data":"—";
+  markets();render();topMovers();
+ }catch(e){document.getElementById("status").textContent="Data unavailable";document.getElementById("dot").style.background="var(--red)"}
+}
+document.getElementById("refresh").onclick=load;
+document.getElementById("sort").onchange=render;document.getElementById("filter").onchange=render;
+document.getElementById("theme").onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"":"dark";localStorage.setItem("ksd5-theme",document.documentElement.dataset.theme)};
+if(localStorage.getItem("ksd5-theme")==="dark")document.documentElement.dataset.theme="dark";
+document.getElementById("add").onclick=()=>{
+ const v=document.getElementById("stockInput").value.trim().toUpperCase();
+ if(!v)return;
+ if(!stocks.some(s=>s.symbol===v)){
+   const src=data?.stocks?.[v]||data?.opportunities?.[v];
+   stocks.push({name:src?.name||v,symbol:v});
+   save();render();
+ }
+ document.getElementById("stockInput").value="";
+};
+load();
+</script>
+</body>
+</html>
