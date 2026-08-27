@@ -212,6 +212,60 @@ def main():
 
         opportunities = simple_market_screen(nse)
 
+        markets = {}
+        # NIFTY 50 from NSE historical index data.
+        try:
+            idx_rows = nse.fetch_historical_index_data(
+                "NIFTY 50",
+                from_date=date.today() - timedelta(days=10),
+                to_date=date.today(),
+            )
+            def idx_value(row):
+                for k in ("CLOSE_INDEX_VAL", "CLOSE", "closingValue", "last"):
+                    if row.get(k) not in (None, ""):
+                        try:
+                            return float(row[k])
+                        except Exception:
+                            pass
+                return None
+            vals = [idx_value(r) for r in idx_rows]
+            vals = [v for v in vals if v is not None]
+            if vals:
+                last = vals[-1]
+                prev = vals[-2] if len(vals) > 1 else None
+                markets["NIFTY 50"] = {
+                    "last": last,
+                    "today": round((last / prev - 1) * 100, 2) if prev else None
+                }
+        except Exception as e:
+            print("NIFTY 50 unavailable:", repr(e))
+
+        # SENSEX from BSE's index archive. We keep this optional so a BSE
+        # outage cannot break the five-stock NSE update.
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q", "bse"],
+                check=True,
+            )
+            from bse import BSE
+            with BSE("bse_cache") as bse:
+                idx = bse.fetchAllIndicesDataByDate(date.today())
+                rows = idx.get("S&P BSE SENSEX", [])
+                if rows:
+                    row = rows[-1]
+                    last = None
+                    for k, v in row.items():
+                        if "close" in str(k).lower() and v not in (None, ""):
+                            try:
+                                last = float(v)
+                                break
+                            except Exception:
+                                pass
+                    if last is not None:
+                        markets["SENSEX"] = {"last": last, "today": None}
+        except Exception as e:
+            print("SENSEX unavailable:", repr(e))
+
         # Preserve a previous good snapshot if one or more symbols temporarily
         # fail. Never replace a good personal stock with an empty record.
         previous = {}
@@ -230,7 +284,7 @@ def main():
             "personalStocksUpdated": [s for s in WATCH if stocks.get(s, {}).get("last") is not None],
             "stockFailures": failures,
             "stocks": stocks,
-            "markets": {},
+            "markets": markets,
             "opportunities": opportunities,
         }
 
