@@ -221,7 +221,7 @@ def main():
                 to_date=date.today(),
             )
             def idx_value(row):
-                for k in ("CLOSE_INDEX_VAL", "CLOSE", "closingValue", "last"):
+                for k in ("EOD_CLOSE_INDEX_VAL", "CLOSE_INDEX_VAL", "CLOSE", "closingValue", "last"):
                     if row.get(k) not in (None, ""):
                         try:
                             return float(row[k])
@@ -240,29 +240,49 @@ def main():
         except Exception as e:
             print("NIFTY 50 unavailable:", repr(e))
 
-        # SENSEX from BSE's index archive. We keep this optional so a BSE
-        # outage cannot break the five-stock NSE update.
+        # SENSEX: BSE's daily archive may be empty before the current
+        # session is published. Try the latest few calendar days and accept
+        # the most recent available SENSEX close.
         try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q", "bse"],
-                check=True,
-            )
             from bse import BSE
             with BSE("bse_cache") as bse:
-                idx = bse.fetchAllIndicesDataByDate(date.today())
-                rows = idx.get("S&P BSE SENSEX", [])
-                if rows:
-                    row = rows[-1]
-                    last = None
-                    for k, v in row.items():
-                        if "close" in str(k).lower() and v not in (None, ""):
+                for back in range(0, 8):
+                    day = date.today() - timedelta(days=back)
+                    try:
+                        idx = bse.fetchAllIndicesDataByDate(day)
+                        rows = []
+                        if isinstance(idx, dict):
+                            for key, value in idx.items():
+                                if "sensex" in str(key).lower():
+                                    rows.extend(value if isinstance(value, list) else [value])
+                        elif isinstance(idx, list):
+                            rows = [r for r in idx if "sensex" in str(r.get("I_name", r.get("indexName",""))).lower()]
+                        if not rows:
+                            continue
+                        row = rows[-1]
+                        last = None
+                        prev = None
+                        for k, v in row.items():
+                            kl = str(k).lower()
+                            if v in (None, ""):
+                                continue
                             try:
-                                last = float(v)
-                                break
+                                fv = float(v)
                             except Exception:
-                                pass
-                    if last is not None:
-                        markets["SENSEX"] = {"last": last, "today": None}
+                                continue
+                            if "prev" in kl and "close" in kl:
+                                prev = fv
+                            elif "close" in kl:
+                                last = fv
+                        if last is not None:
+                            markets["SENSEX"] = {
+                                "last": last,
+                                "today": round((last / prev - 1) * 100, 2) if prev else None,
+                                "asOf": day.isoformat()
+                            }
+                            break
+                    except Exception as day_error:
+                        print("SENSEX date unavailable", day.isoformat(), repr(day_error))
         except Exception as e:
             print("SENSEX unavailable:", repr(e))
 
