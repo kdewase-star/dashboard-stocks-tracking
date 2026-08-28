@@ -1,4 +1,5 @@
-const CACHE = "kunal-stocks-v1";
+const CACHE = "kunal-stocks-v2";
+
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -18,42 +19,105 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE).map(key => caches.delete(key))
-      ))
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => key !== CACHE)
+            .map(key => caches.delete(key))
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", event => {
-  const url = new URL(event.request.url);
+  const request = event.request;
 
-  // Always try fresh market/IPO data first; fall back to the cached copy.
-  if (url.pathname.endsWith("/data.json") || url.pathname.endsWith("/ipo.json")) {
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  /*
+   * MARKET / IPO DATA
+   *
+   * Always request the newest version from GitHub Pages.
+   * Cache is only a fallback if the network is unavailable.
+   */
+  if (
+    url.pathname.endsWith("/data.json") ||
+    url.pathname.endsWith("/ipo.json")
+  ) {
     event.respondWith(
-      fetch(event.request, { cache: "no-store" })
+      fetch(request, {
+        cache: "no-store"
+      })
         .then(response => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(event.request, copy));
+
+            caches.open(CACHE).then(cache => {
+              cache.put(request, copy);
+            });
           }
+
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(request))
     );
+
     return;
   }
 
-  // App shell: network first, then cached copy.
+  /*
+   * HTML / APP SHELL
+   *
+   * Network first.
+   * This allows a newly deployed index.html to replace
+   * the old cached version.
+   */
+  if (
+    request.mode === "navigate" ||
+    url.pathname.endsWith("/index.html")
+  ) {
+    event.respondWith(
+      fetch(request, {
+        cache: "no-store"
+      })
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+
+            caches.open(CACHE).then(cache => {
+              cache.put("./index.html", copy);
+            });
+          }
+
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+
+    return;
+  }
+
+  /*
+   * Other static assets.
+   *
+   * Network first, cached fallback.
+   */
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then(response => {
-        if (response.ok && event.request.method === "GET") {
+        if (response.ok) {
           const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, copy));
+
+          caches.open(CACHE).then(cache => {
+            cache.put(request, copy);
+          });
         }
+
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(request))
   );
 });
