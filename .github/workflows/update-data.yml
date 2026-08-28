@@ -52,17 +52,19 @@ jobs:
 
           if not isinstance(data, dict):
               raise SystemExit("ERROR: data.json is not an object")
-
           if not isinstance(data.get("stocks", {}), (dict, list)):
               raise SystemExit("ERROR: data.json stocks is invalid")
-
           if not isinstance(ipo.get("ipos", []), list):
               raise SystemExit("ERROR: ipo.json ipos is invalid")
+
+          ipo_count = len(ipo.get("ipos", []))
+          if ipo_count == 0:
+              raise SystemExit("ERROR: IPO snapshot is empty; refusing to publish empty IPO data")
 
           print("Market updated:", data.get("updatedAt"))
           print("Stock failures:", data.get("stockFailures", []))
           print("IPO updated:", ipo.get("updatedAt"))
-          print("IPO count:", len(ipo.get("ipos", [])))
+          print("IPO count:", ipo_count)
           PY
 
       - name: Commit updated data
