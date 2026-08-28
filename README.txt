@@ -1,30 +1,6 @@
-# Kunal's Stock Dashboard — Complete Update
+Kunal Stock Dashboard V12 accuracy fix.
 
-Replace/create these files in the repository:
+Replace index.html, updater.py, ipo_updater.py, ipo.json, history-cache.json, and .github/workflows/update-data.yml.
+Run Actions -> Update Market Data manually once after upload.
 
-1. index.html — replace
-2. sw.js — replace
-3. manifest.json — replace
-4. updater.py — KEEP the existing working repository version
-5. ipo_updater.py — create
-6. history-cache.json — create
-7. .github/workflows/update-data.yml — replace
-
-IMPORTANT:
-The package intentionally does NOT overwrite updater.py because the repository's
-current updater contains the working NSE/current-price pipeline. The updater
-already contains Yahoo historical fetching and resilient cached-value handling.
-
-After uploading:
-- Commit the files.
-- Go to Actions → Update Market Data → Run workflow.
-- Wait for the workflow to finish.
-- Open the dashboard and hard-refresh once.
-
-The dashboard changes include:
-- IPO decision summary
-- score displayed in score colour
-- IPO status badges
-- active vs listed handling
-- historical fallback for user-added stocks
-- service-worker cache bump
+Important: market-cap values are normalized from NSE raw totalMarketCap (₹ lakh) to ₹ crore. Historical data is stored server-side in history-cache.json, with common added symbols prioritized and NIFTY 500 symbols batched. IPO snapshot uses multi-source public data checked 28 Aug 2026; GMP is unofficial.
