@@ -2,7 +2,6 @@ name: Update Market Data
 
 on:
   workflow_dispatch:
-
   schedule:
     - cron: "2-57/5 * * * 1-5"
 
@@ -16,7 +15,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -32,35 +31,38 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
+          pip install "nse[server]" requests
 
       - name: Update market data
         run: |
           python updater.py
 
-      - name: Check generated data
+      - name: Update IPO data
+        run: |
+          python ipo_updater.py
+
+      - name: Validate generated data
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          path = Path("data.json")
+          data = json.loads(Path("data.json").read_text(encoding="utf-8"))
+          ipo = json.loads(Path("ipo.json").read_text(encoding="utf-8"))
 
-          if not path.exists():
-              raise SystemExit("ERROR: data.json was not generated")
+          if not isinstance(data, dict):
+              raise SystemExit("ERROR: data.json is not an object")
 
-          data = json.loads(path.read_text(encoding="utf-8"))
+          if not isinstance(data.get("stocks", {}), (dict, list)):
+              raise SystemExit("ERROR: data.json stocks is invalid")
 
-          print("================================")
-          print("Market Data Update")
-          print("================================")
-          print("Updated:", data.get("updatedAt"))
-          print("Stocks:", len(data.get("stocks", [])))
-          print("Failures:", data.get("stockFailures", []))
-          print("Markets:", len(data.get("markets", {})))
-          print("================================")
+          if not isinstance(ipo.get("ipos", []), list):
+              raise SystemExit("ERROR: ipo.json ipos is invalid")
+
+          print("Market updated:", data.get("updatedAt"))
+          print("Stock failures:", data.get("stockFailures", []))
+          print("IPO updated:", ipo.get("updatedAt"))
+          print("IPO count:", len(ipo.get("ipos", [])))
           PY
 
       - name: Commit updated data
@@ -68,11 +70,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data.json nse_cache ipo.json
+          git add data.json ipo.json history-cache.json nse_cache
 
           if git diff --cached --quiet; then
             echo "No data changes to commit."
           else
-            git commit -m "Update market data"
+            git commit -m "Update market and IPO data"
             git push
           fi
