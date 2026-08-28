@@ -1,0 +1,36 @@
+/* IPO fix styles */
+.ipo-status {
+  display:inline-block;
+  padding:5px 9px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.ipo-live { background:#d9f2d9; color:#176b2c; }
+.ipo-ended { background:#ffe3c2; color:#8a4b00; }
+.ipo-upcoming { background:#e4e8ed; color:#45515c; }
+.ipo-listed { background:#e5e5e5; color:#555; }
+
+.ipo-score {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:42px;
+  height:32px;
+  border-radius:9px;
+  font-weight:900;
+}
+.score-green { background:#cceccc; color:#176b2c; }
+.score-yellow { background:#fff0b8; color:#805f00; }
+.score-red { background:#ffd4d4; color:#9b2020; }
+.score-na { background:#e8e8e8; color:#666; }
+
+[data-theme=dark] .ipo-live { background:#17351f; color:#8fe0a0; }
+[data-theme=dark] .ipo-ended { background:#3b2a16; color:#f0bf73; }
+[data-theme=dark] .ipo-upcoming,
+[data-theme=dark] .ipo-listed,
+[data-theme=dark] .score-na { background:#2b3028; color:#c4ccb9; }
+[data-theme=dark] .score-green { background:#17351f; color:#8fe0a0; }
+[data-theme=dark] .score-yellow { background:#3b3215; color:#f0d66c; }
+[data-theme=dark] .score-red { background:#3a1b1b; color:#ff9c9c; }

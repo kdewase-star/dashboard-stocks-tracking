@@ -1,93 +1,79 @@
 import json
-import re
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime, date
 
-import requests
+OUTPUT_FILE = "ipo.json"
 
-OUT = Path("ipo.json")
-HEADERS = {"User-Agent":"Mozilla/5.0 (compatible; KunalStockDashboard/1.0)"}
+# IMPORTANT:
+# Keep raw IPO facts separate from analysis.
+# retail_min_lots is the minimum number of lots required for the
+# retail application. Do NOT assume it is always 1.
 
+IPOS = [
+    {
+        "name": "Paluck Technologies",
+        "symbol": "PALUCK",
+        "type": "SME",
 
-def load():
-    try:
-        return json.loads(OUT.read_text(encoding="utf-8"))
-    except Exception:
-        return {"version":"3.0","updatedAt":None,"ipos":[]}
+        "priceLow": 46,
+        "priceHigh": 48,
+        "lotSize": 3000,
+        "retailMinLots": 2,
 
+        "openDate": "2026-08-28",
+        "closeDate": "2026-09-01",
+        "allotmentDate": "2026-09-02",
+        "listingDate": "2026-09-04",
 
-def norm(s):
-    return re.sub(r"[^a-z0-9]","",(s or "").lower())
+        "subscription": None,
+        "gmp": None,
 
+        "analysis": {
+            "score": None,
+            "listingGains": "Pending",
+            "longTerm": "Pending",
+            "risk": "High",
+            "positives": [],
+            "negatives": []
+        }
+    }
+]
 
-def fetch(url):
-    r=requests.get(url,headers=HEADERS,timeout=30)
-    r.raise_for_status()
-    return r.text
+def calculate(ipo):
+    shares = ipo["lotSize"] * ipo["retailMinLots"]
+    ipo["retailMinShares"] = shares
+    ipo["minInvestmentLow"] = ipo["priceLow"] * shares
+    ipo["minInvestmentHigh"] = ipo["priceHigh"] * shares
+    ipo["minInvestment"] = (
+        f"₹{ipo['minInvestmentLow']/100000:.2f}L - "
+        f"₹{ipo['minInvestmentHigh']/100000:.2f}L"
+    )
 
+def get_status(ipo):
+    today = date.today()
+    op = datetime.strptime(ipo["openDate"], "%Y-%m-%d").date()
+    cl = datetime.strptime(ipo["closeDate"], "%Y-%m-%d").date()
+    li = datetime.strptime(ipo["listingDate"], "%Y-%m-%d").date()
 
-def parse_groww_subscription():
-    """
-    Best-effort parser. The updater never replaces good values with empty/null.
-    If Groww changes HTML, the seeded snapshot is retained.
-    """
-    html=fetch("https://groww.in/ipo/subscription")
-    text=re.sub(r"\s+"," ",html)
-    out={}
-    names=[
-        "Annu Projects","Lumino Industries","Priority Jewels","ESDS Software Solution",
-        "Sumax Engineering","Kwick Forensic","Paluck Technologies",
-        "Complete Sports and Management","Skyways Air Services","ABH Healthcare",
-        "Madhur Knit Crafts","Symbiotec Pharmalab","Hy-tech Engineers"
-    ]
-    for name in names:
-        i=text.lower().find(name.lower())
-        if i<0: continue
-        chunk=text[i:i+1500]
-        nums=re.findall(r"(\d+(?:\.\d+)?)x",chunk)
-        if nums:
-            out[norm(name)]={"subscriptionTotal":float(nums[-1])}
-    return out
+    if today < op:
+        return "UPCOMING"
+    if op <= today <= cl:
+        return "LIVE"
+    if cl < today < li:
+        return "BIDDING ENDED"
+    return "LISTED"
 
+for ipo in IPOS:
+    calculate(ipo)
+    ipo["status"] = get_status(ipo)
+    ipo["lastUpdated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def status(item):
-    today=datetime.now().date()
-    def d(k):
-        try:
-            return datetime.fromisoformat(str(item.get(k))).date()
-        except Exception:
-            return None
-    o,c,a,l=d("openDate"),d("closeDate"),d("allotmentDate"),d("listingDate")
-    if l and today>=l:return "LISTED"
-    if c and today>c:return "BIDDING ENDED"
-    if o and c and o<=today<=c:return "LIVE"
-    if o and today<o:return "UPCOMING"
-    if a and today>=a:return "ALLOTMENT PENDING"
-    return "STATUS UNCONFIRMED"
+order = {"LIVE": 1, "BIDDING ENDED": 2, "UPCOMING": 3, "LISTED": 4}
+IPOS.sort(key=lambda x: (order.get(x["status"], 99), x["openDate"]))
 
+with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    json.dump({
+        "updatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ipos": IPOS
+    }, f, indent=2, ensure_ascii=False)
 
-def main():
-    data=load()
-    old=data.get("ipos",[])
-    try:
-        fresh=parse_groww_subscription()
-    except Exception as exc:
-        print("IPO live refresh unavailable:",repr(exc))
-        fresh={}
-
-    for item in old:
-        if not isinstance(item,dict): continue
-        key=norm(item.get("name"))
-        if key in fresh and fresh[key].get("subscriptionTotal") is not None:
-            item["subscriptionTotal"]=fresh[key]["subscriptionTotal"]
-        item["status"]=status(item)
-
-    # Keep the seed snapshot; do not publish an empty scrape.
-    data["updatedAt"]=datetime.now(timezone.utc).isoformat()
-    data["gmpDisclaimer"]="GMP is unofficial and must not be treated as a guaranteed listing price or return."
-    OUT.write_text(json.dumps(data,indent=2,ensure_ascii=False),encoding="utf-8")
-    print("IPO records preserved:",len(data.get("ipos",[])))
-
-
-if __name__=="__main__":
-    main()
+print(f"Wrote {len(IPOS)} IPO records to {OUTPUT_FILE}")

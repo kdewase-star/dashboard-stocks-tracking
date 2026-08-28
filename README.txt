@@ -1,6 +1,39 @@
-Kunal Stock Dashboard V12 accuracy fix.
+IPO Dashboard Fix v13
+======================
 
-Replace index.html, updater.py, ipo_updater.py, ipo.json, history-cache.json, and .github/workflows/update-data.yml.
-Run Actions -> Update Market Data manually once after upload.
+This ZIP fixes the two IPO issues discussed:
 
-Important: market-cap values are normalized from NSE raw totalMarketCap (₹ lakh) to ₹ crore. Historical data is stored server-side in history-cache.json, with common added symbols prioritized and NIFTY 500 symbols batched. IPO snapshot uses multi-source public data checked 28 Aug 2026; GMP is unofficial.
+1. SME minimum investment
+   Paluck Technologies:
+   - Price: ₹46–₹48
+   - Lot: 3,000 shares
+   - Retail minimum: 2 lots
+   - Shares required: 6,000
+   - Investment: ₹2.76L–₹2.88L
+
+2. Analysis columns
+   Listing Gains, Long Term and Risk are now read from independent
+   fields:
+     analysis.listingGains
+     analysis.longTerm
+     analysis.risk
+
+Files:
+- ipo_updater.py       Replace your existing updater.
+- ipo_renderer_fix.js  Add/replace the IPO rendering function.
+- ipo_fix.css          Add to the <style> section of index.html.
+
+Important:
+Do NOT remove your existing IPO records and replace them with only
+the Paluck record in production. Merge the same data model into your
+existing multi-IPO updater. The supplied updater is a structurally
+correct reference for the fix.
+
+After updating:
+1. Run the GitHub Action that updates IPO data.
+2. Confirm ipo.json contains minInvestmentLow,
+   minInvestmentHigh, retailMinLots and analysis as separate fields.
+3. Hard-refresh the dashboard.
+
+Do not assign an IPO's score, listing-gain outlook, long-term outlook,
+or risk by copying values between columns.
