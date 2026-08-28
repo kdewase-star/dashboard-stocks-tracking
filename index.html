@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5d6b35">
+<title>Kunal's Stock Dashboard V11.0</title>
+<style>
+:root{--olive:#5d6b35;--olive2:#78884a;--olive3:#eef1e3;--bg:#f5f7f1;--panel:#fff;--text:#1f2919;--muted:#6d7668;--border:#dce2d4;--good:#2f7d32;--bad:#b23a35;--gold:#9a7610;--shadow:0 4px 18px rgba(39,53,29,.07)}
+[data-theme=dark]{--bg:#11170e;--panel:#192114;--text:#edf2e7;--muted:#a7b19d;--border:#34402f;--olive:#95aa62;--olive2:#b1c57a;--olive3:#26311f;--good:#76c67a;--bad:#ff7b72;--gold:#e1bf57;--shadow:0 4px 18px rgba(0,0,0,.2)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}body{min-height:100vh}.wrap{max-width:1320px;margin:auto;padding:16px}
+.topbar{position:sticky;top:0;z-index:20;margin:-16px -16px 16px;padding:12px 16px;background:var(--olive);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 3px 14px rgba(40,50,20,.18)}.brand{display:flex;align-items:center;gap:10px}.brandmark{width:34px;height:34px;border-radius:10px;background:#fff;color:var(--olive);display:grid;place-items:center;font-weight:950}.brand h1{font-size:17px;margin:0}.brand small{display:block;opacity:.82;font-size:10px;margin-top:2px}.top-actions{display:flex;gap:7px}.top-actions button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff}
+.quote{background:linear-gradient(135deg,var(--olive),var(--olive2));color:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:var(--shadow);margin-bottom:14px}.quote-label{font-size:9px;letter-spacing:.13em;text-transform:uppercase;opacity:.76}.quote-text{font-size:20px;line-height:1.28;font-weight:750;max-width:920px;margin:9px 0 8px}.quote-author{font-size:11px;opacity:.82}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:14px}.card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}.card{padding:12px 13px}.label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.value{font-size:18px;font-weight:850;margin-top:4px}.subval{font-size:10px;color:var(--muted);margin-top:2px}.up{color:var(--good)}.down{color:var(--bad)}
+.panel{padding:14px;margin-bottom:14px}.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:11px}.section-head h2{font-size:15px;margin:0}.section-head p{font-size:10px;color:var(--muted);margin:2px 0 0}.status{font-size:10px;color:var(--muted)}
+.marketgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.market{padding:12px;border:1px solid var(--border);border-radius:12px}.mhead{display:flex;justify-content:space-between;align-items:center}.mname{font-size:11px;font-weight:800}.mval{font-size:20px;font-weight:900;margin-top:4px}.mchg{font-size:11px;margin-top:2px}
+.searchbar{position:relative}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar input,.toolbar select,.toolbar button{font:inherit;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:11px;padding:9px 11px}.toolbar input{min-width:280px;flex:1}.primary{background:var(--olive)!important;color:#fff!important;border-color:var(--olive)!important;font-weight:750}.results{display:none;position:absolute;left:0;right:0;top:44px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;z-index:10}.results.open{display:block}.result{padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border)}.result:last-child{border-bottom:0}.result:hover{background:var(--olive3)}.result b{display:block;font-size:11px}.result span{font-size:9px;color:var(--muted)}
+.tablebox{overflow:auto;border:1px solid var(--border);border-radius:12px}table{border-collapse:collapse;width:100%;min-width:1540px;font-size:11px}th{padding:9px 7px;color:var(--muted);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--panel);z-index:1}th:first-child,td:first-child,td.name{text-align:left!important}td{padding:9px 7px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;vertical-align:middle}.name{font-weight:850}.ticker{display:block;font-size:9px;color:var(--muted);font-weight:500}.price{font-size:13px;font-weight:900}.cellprice{font-weight:650}.cellpct{font-size:10px;margin-top:1px}.star{font-size:16px;background:none!important;border:0!important;padding:0 4px!important;color:var(--olive)}.remove{font-size:9px;padding:4px 6px!important}.clickstock{cursor:pointer}.clickstock:hover{background:var(--olive3)}
+.details{display:none}.details.open{display:block}.detail-top{display:flex;justify-content:space-between;gap:12px}.detail-title{font-size:16px;font-weight:900}.detail-right{text-align:right}.detail-price{font-size:22px;font-weight:950}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:11px}.metric{padding:9px;background:var(--olive3);border-radius:10px}.metric span{display:block;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.metric b{font-size:11px}.chart{width:100%;height:180px;display:block;margin-top:10px}.periods{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.period{padding:7px 9px;border:1px solid var(--border);border-radius:9px;font-size:10px}.period b{display:block;font-size:11px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.move,.opcard,.catcard,.ipo{border:1px solid var(--border);border-radius:12px;padding:11px}.move h3,.opcard h3,.catcard h3,.ipo h3{font-size:11px;margin:0 0 7px}.moveitem{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px}.moveitem:last-child{border-bottom:0}.mini{font-size:10px;color:var(--muted);line-height:1.45}.score{font-weight:900}.pill{display:inline-block;font-size:9px;border:1px solid var(--border);border-radius:999px;padding:3px 6px;margin-left:4px}.empty{padding:12px;border:1px dashed var(--border);border-radius:10px;color:var(--muted);font-size:10px;line-height:1.45}.tag{display:inline-block;font-size:8px;background:var(--olive3);border-radius:999px;padding:3px 6px;margin:2px 3px 0 0}
+.ipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rubric{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:9px}.rubric div{padding:9px;background:var(--olive3);border-radius:9px;font-size:9px;line-height:1.4}.note{font-size:10px;color:var(--muted);line-height:1.5;margin-top:8px}
+.ipo-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.ipo-title{font-size:15px;font-weight:900}.ipo-meta{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5}
+.ipo-score{min-width:92px;text-align:center;border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:var(--soft)}
+.ipo-score b{display:block;font-size:18px}.ipo-score span{font-size:9px;font-weight:800}
+.ipo-good,.ipo-bad{border-radius:10px;padding:9px 10px;margin-top:9px}
+.ipo-good{background:#eaf7ef;border:1px solid #bfe5ca}.ipo-bad{background:#fff0f0;border:1px solid #efc4c4}
+[data-theme=dark] .ipo-good{background:#13281b;border-color:#285b38}[data-theme=dark] .ipo-bad{background:#2b1717;border-color:#613030}
+.ipo-good h4,.ipo-bad h4{margin:0 0 6px;font-size:10px}.ipo-good h4{color:#17723d}.ipo-bad h4{color:#b33131}
+[data-theme=dark] .ipo-good h4{color:#75d99a}[data-theme=dark] .ipo-bad h4{color:#ff8d8d}
+.ipo-points{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.ipo-point{font-size:10px;line-height:1.35;padding:5px 6px;border-radius:7px;background:rgba(255,255,255,.55)}
+[data-theme=dark] .ipo-point{background:rgba(0,0,0,.18)}
+.ipo-full{margin-top:9px}.ipo-full summary{font-size:10px;font-weight:800;cursor:pointer;color:var(--muted);list-style:none}
+.ipo-full summary::-webkit-details-marker{display:none}.ipo-full summary:after{content:"＋";float:right;font-size:13px}
+.ipo-full[open] summary:after{content:"−"}
+.ipo-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}
+.ipo-fact{padding:7px;background:var(--soft);border-radius:7px;font-size:9px}.ipo-fact b{display:block;font-size:10px}
+@media(max-width:700px){.ipo-points{grid-template-columns:1fr}.ipo-facts{grid-template-columns:repeat(2,1fr)}}
+.warn{background:#faf4d7;border:1px solid #e7d89a;border-radius:11px;padding:11px;color:#64551a;font-size:10px;line-height:1.5}[data-theme=dark] .warn{background:#2d2b18;color:#dfd18b;border-color:#5a542c}
+@media(max-width:1050px){.cards{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.wrap{padding:11px}.topbar{margin:-11px -11px 12px;padding:10px 11px}.quote{padding:16px}.quote-text{font-size:17px}.cards{grid-template-columns:repeat(2,1fr)}.marketgrid,.grid3,.ipo-grid,.rubric{grid-template-columns:1fr}.grid4,.metrics{grid-template-columns:repeat(2,1fr)}.toolbar input{min-width:0}.section-head{align-items:flex-start;flex-direction:column}}
+
+
+/* IPO timeline */
+.ipo-schedule{margin-top:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.ipo-schedule-title{font-size:9px;font-weight:900;letter-spacing:.05em;margin-bottom:7px;color:var(--olive)}
+.ipo-schedule-title span{font-size:8px;font-weight:600;color:var(--muted);margin-left:5px}
+.ipo-schedule-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ipo-schedule-grid div{padding:7px;background:var(--olive3);border-radius:8px}
+.ipo-schedule-grid span{display:block;font-size:8px;color:var(--muted);margin-bottom:2px}
+.ipo-schedule-grid b{font-size:10px}
+@media(max-width:760px){.ipo-schedule-grid{grid-template-columns:repeat(2,1fr)}}
+
+
+
+/* V9.2: true tabbed Android app screens */
+.app-screen{display:none!important}
+.app-screen.active{display:block!important}
+.tab-only{display:none!important}
+.bottom-nav{
+  position:fixed;
+  left:50%;
+  bottom:0;
+  transform:translateX(-50%);
+  z-index:100;
+  width:min(760px,100%);
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-bottom:0;
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -6px 22px rgba(0,0,0,.10);
+  padding:5px 4px calc(5px + env(safe-area-inset-bottom));
+}
+.bottom-nav button{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:9px;
+  font-weight:800;
+  padding:5px 2px;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.bottom-nav button b{
+  display:block;
+  font-size:17px;
+  line-height:1.05;
+  margin-bottom:2px;
+}
+.bottom-nav button.active{color:var(--olive)}
+.wrap{padding-bottom:86px}
+.ipo-new{
+  border:1px solid var(--olive2);
+  box-shadow:0 0 0 2px rgba(120,136,74,.10), var(--shadow);
+  position:relative;
+}
+.ipo-new-badge{
+  position:absolute;right:9px;top:9px;
+  background:var(--olive);color:#fff;border-radius:999px;
+  padding:3px 7px;font-size:8px;font-weight:900;
+}
+.ipo-schedule{margin-top:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.ipo-schedule-title{font-size:9px;font-weight:900;letter-spacing:.05em;margin-bottom:7px;color:var(--olive)}
+.ipo-schedule-title span{font-size:8px;font-weight:600;color:var(--muted);margin-left:5px}
+.ipo-schedule-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ipo-schedule-grid div{padding:7px;background:var(--olive3);border-radius:8px}
+.ipo-schedule-grid span{display:block;font-size:8px;color:var(--muted);margin-bottom:2px}
+.ipo-schedule-grid b{font-size:10px}
+@media(max-width:760px){
+  .bottom-nav{width:100%;border-radius:14px 14px 0 0}
+  .ipo-schedule-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+</style>
+<style>
+.ipo-decision{margin:0 0 12px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--panel)}
+.ipo-decision-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 12px;background:var(--olive3);font-size:11px}
+.ipo-decision-head span{font-size:9px;color:var(--muted);font-weight:600}
+.ipo-summary-table{min-width:780px!important;font-size:10px}
+.ipo-summary-table th{font-size:9px}
+.score-badge{display:inline-grid;place-items:center;min-width:34px;height:28px;padding:0 7px;border-radius:9px;font-weight:950;color:#fff}
+.score-green{background:#2f7d32}.score-amber{background:#b88916}.score-red{background:#b23a35}
+.status-badge{display:inline-block;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:900;white-space:nowrap}
+.status-live{background:#dff3e4;color:#17652f}.status-upcoming{background:#e9eddc;color:#55652d}
+.status-closed{background:#fff0d2;color:#8a6410}.status-allotment{background:#ffe3e1;color:#9d302b}
+.status-listed{background:#e7eaf0;color:#505866}
+.ipo-score-box{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ipo-score-box .score-badge{min-width:46px;height:38px;font-size:17px}
+.ipo-score-box small{font-size:8px;font-weight:800;color:var(--muted)}
+@media(max-width:760px){.ipo-decision-head{align-items:flex-start;flex-direction:column}.ipo-summary-table{min-width:760px!important}}
+</style></head>
+<body>
+<div class="wrap">
+<header class="topbar"><div class="brand"><div class="brandmark">K</div><div><h1>Kunal's Stock Dashboard</h1><small>Indian market intelligence · public/delayed data · no broker credentials</small></div></div><div class="top-actions"><span class="status" id="status">Loading…</span><button id="refresh">↻</button><button id="theme">☾</button></div></header>
+
+<section class="quote"><div class="quote-label">Daily tech mindset</div><div class="quote-text" id="quoteText"></div><div class="quote-author" id="quoteAuthor"></div></section>
+
+<section class="cards" data-screen="market"><div class="card"><div class="label">Watchlist</div><div class="value" id="count">5</div></div><div class="card"><div class="label">Best Today</div><div class="value up" id="best">—</div></div><div class="card"><div class="label">Worst Today</div><div class="value down" id="worst">—</div></div><div class="card"><div class="label">Best Since Tracking</div><div class="value up" id="bestTrack">—</div></div><div class="card"><div class="label">Market Status</div><div class="value" id="marketStatus">—</div></div><div class="card"><div class="label">Data Updated</div><div class="value" id="updated">—</div></div></section>
+
+<section class="panel" data-screen="market"><div class="section-head"><div><span id="market-section" class="section-anchor"></span><h2>Market Overview</h2><p>NIFTY 50 and SENSEX from the latest cached snapshot</p></div></div><div class="marketgrid" id="markets"></div></section>
+
+<section class="panel" data-screen="watchlist"><div class="section-head"><div><span id="watchlist-section" class="section-anchor"></span><h2>Build Your Watchlist</h2><p>Search by symbol or company name and choose a real matching security.</p></div></div><div class="toolbar"><div class="searchbar" style="flex:1;min-width:220px"><input id="stockInput" autocomplete="off" placeholder="Try TCS, Tata Consultancy, GTLINFRA…"><div id="results" class="results"></div></div><button id="add" class="primary">＋ Add selected</button><select id="sort"><option value="default">Sort: Default</option><option value="today">Today</option><option value="m1">1M</option><option value="y1">1Y</option><option value="track">Since Tracking</option></select><select id="filter"><option value="all">All</option><option value="up">Gainers</option><option value="down">Losers</option><option value="fav">Favourites</option></select></div><div class="note">Unknown text is never silently added. Search suggestions come from the cached broader-market universe, and the selected security's own first available price becomes its independent tracking price.</div></section>
+
+<section class="panel" data-screen="watchlist"><div class="section-head"><div><span id="performance-section" class="section-anchor"></span><h2>My Performance</h2><p>Every stock has its own tracking price and historical prices.</p></div></div><div class="tablebox"><table><thead><tr><th>★</th><th>Stock</th><th>Tracking</th><th>Since</th><th>Current</th><th>Today</th><th>1M</th><th>3M</th><th>6M</th><th>9M</th><th>1Y</th><th>5Y</th><th>All Time</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+
+<section class="panel" data-screen="watchlist"><div class="section-head"><div><h2>Selected Stock</h2><p>Tap any performance row to open details and the cached chart.</p></div></div><div id="details"><div class="empty">Select a stock from the table.</div></div></section>
+
+<section class="panel" data-screen="discover"><div class="section-head"><div><span id="opportunities-section" class="section-anchor"></span><h2>Broader Market Opportunities</h2><p>Entire cached NIFTY 500 universe, including stocks outside your watchlist.</p></div></div><div class="grid3"><div class="opcard"><h3>Biggest Gainers — All Stocks</h3><div id="oppToday"></div></div><div class="opcard"><h3>Near 52W High</h3><div id="oppHigh"></div></div><div class="opcard"><h3>Recovery Candidates</h3><div id="oppLow"></div></div></div><div class="note">Opportunity scores are indicative screening scores, not predictions or guaranteed returns.</div></section>
+
+<section class="panel" data-screen="movers"><div class="section-head"><div><span id="movers-section" class="section-anchor"></span><h2>Biggest Movers — All Stocks</h2><p>Top gainers and losers across the whole cached universe, not just your watchlist.</p></div></div><div class="grid4"><div class="move"><h3>Top Gainers</h3><div id="gainers"></div></div><div class="move"><h3>Top Losers</h3><div id="losers"></div></div><div class="move"><h3>Strongest Momentum</h3><div id="momentum"></div></div><div class="move"><h3>Near 52W High</h3><div id="moversHigh"></div></div></div></section>
+
+<section class="panel" data-screen="discover"><div class="section-head"><div><span id="categories-section" class="section-anchor"></span><h2>Stock Categories</h2><p>Cap buckets are rank-based from available free-float market-cap data; themes are curated.</p></div></div><div class="grid4" id="categories"></div></section>
+
+<section class="panel" data-screen="ipo"><div class="section-head"><div><span id="ipo-section" class="section-anchor"></span><h2>IPO Intelligence</h2><p>Current/upcoming IPOs with status, decision score and detailed analysis.</p></div></div>
+<div class="ipo-decision">
+  <div class="ipo-decision-head"><b>IPO Decision Summary</b><span>Analytical score — not a guarantee</span></div>
+  <div class="tablebox"><table class="ipo-summary-table"><thead><tr><th>IPO</th><th>Status</th><th>Score</th><th>Can Invest?</th><th>Listing Gains</th><th>Long Term</th><th>Risk</th></tr></thead><tbody id="ipoSummary"></tbody></table></div>
+</div>
+<div id="ipos"></div><div class="rubric"><div><b>Fundamentals</b><br>Revenue/profit growth, margins, ROE/ROCE, debt</div><div><b>Valuation</b><br>IPO P/E vs industry, P/S and market-cap context</div><div><b>Structure</b><br>Fresh issue, OFS, promoter holding, use of proceeds</div><div><b>Demand</b><br>GMP, trend and retail/QIB/NII subscription</div></div><div class="note">GMP is unofficial market information and must never be treated as a guaranteed listing price or return.</div></section>
+
+<div class="warn"><b>Data note:</b> Current quotes and broad-market screens use the cached public snapshot. A temporary source failure preserves the last successful value where practical.</div>
+</div>
+
+<script>
+const defaults=[{name:"ABB India",symbol:"ABB"},{name:"Bharat Dynamics",symbol:"BDL"},{name:"BPCL",symbol:"BPCL"},{name:"Bharat Electronics",symbol:"BEL"},{name:"Cupid",symbol:"CUPID"}];
+const quotes=[
+ ["Stay hungry. Stay foolish.","Steve Jobs"],
+ ["Move fast and break things.","Mark Zuckerberg"],
+ ["Your most unhappy customers are your greatest source of learning.","Bill Gates"],
+ ["Great things in business are never done by one person; they're done by a team.","Steve Jobs"],
+];
+let stocks=JSON.parse(localStorage.getItem("ksd7-stocks")||"null")||defaults;let data=null,ipoData=null,selected=null,chosen=null;
+const fmt=v=>v==null||!isFinite(v)?"—":Number(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=v=>v==null||!isFinite(v)?"—":(v>=0?"+":"")+Number(v).toFixed(2)+"%";
+
+const num=v=>{
+  if(v===null||v===undefined||v==="") return null;
+  const n=Number(String(v).replace(/,/g,"").replace(/₹/g,"").replace(/%/g,""));
+  return Number.isFinite(n)?n:null;
+};
+const price=v=>{
+  const n=num(v);
+  return n===null?"—":"₹"+n.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+};
+
+const cls=v=>v==null?"":v>=0?"up":"down";
+const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const trackKey=s=>`ksd7-track-${s}`;function save(){localStorage.setItem("ksd7-stocks",JSON.stringify(stocks))}
+function track(symbol,last){let r=JSON.parse(localStorage.getItem(trackKey(symbol))||"null");if(!r?.price&&last!=null){r={price:last,date:new Date().toISOString()};localStorage.setItem(trackKey(symbol),JSON.stringify(r))}return r}
+function universe(){return Object.entries(data?.opportunities||{}).map(([symbol,d])=>({symbol,...d})).filter(d=>d.last!=null)}
+function get(s){return data?.stocks?.[s.symbol]||data?.opportunities?.[s.symbol]||null}
+function historicalCell(d,key){const price=d?.[key+"Price"],change=d?.[key];return price!=null?`<div class="cellprice">₹${fmt(price)}</div><div class="cellpct ${cls(change)}">${pct(change)}</div>`:"—"}
+function render(){const f=document.getElementById("filter").value,k=document.getElementById("sort").value;let list=stocks.filter(s=>{const d=get(s),v=d?.today;return f==="all"||(f==="up"&&v!=null&&v>=0)||(f==="down"&&v!=null&&v<0)||(f==="fav"&&s.favorite)});list.sort((a,b)=>{if(k==="default")return 0;const A=get(a),B=get(b);if(k==="track"){const ta=A?.last!=null?track(a.symbol,A.last):null,tb=B?.last!=null?track(b.symbol,B.last):null;return ((tb?.price&&B?.last)?B.last/tb.price-1:-Infinity)-((ta?.price&&A?.last)?A.last/ta.price-1:-Infinity)}return (B?.[k]??-Infinity)-(A?.[k]??-Infinity)});
+document.getElementById("count").textContent=stocks.length;document.getElementById("rows").innerHTML=list.map(s=>{const d=get(s),tr=d?.last!=null?track(s.symbol,d.last):null,since=tr?.price&&d?.last!=null?(d.last/tr.price-1)*100:null;return `<tr class="clickstock" data-sym="${esc(s.symbol)}"><td><button class="star" data-star="${esc(s.symbol)}">${s.favorite?"★":"☆"}</button></td><td class="name">${esc(d?.name||s.name)}<span class="ticker">${esc(s.symbol)}</span></td><td>${tr?`₹${fmt(tr.price)}`:"—"}</td><td class="${cls(since)}">${pct(since)}</td><td class="price">${d?.last!=null?"₹"+fmt(d.last):"—"}</td><td class="${cls(d?.today)}">${pct(d?.today)}</td><td>${historicalCell(d,"m1")}</td><td>${historicalCell(d,"m3")}</td><td>${historicalCell(d,"m6")}</td><td>${historicalCell(d,"m9")}</td><td>${historicalCell(d,"y1")}</td><td>${historicalCell(d,"y5")}</td><td>${historicalCell(d,"allTime")}</td><td><button class="remove" data-remove="${esc(s.symbol)}">Remove</button></td></tr>`}).join("")||`<tr><td colspan="14"><div class="empty">No stocks match this filter.</div></td></tr>`;
+document.querySelectorAll("[data-sym]").forEach(r=>r.onclick=e=>{if(e.target.closest("button"))return;openDetail(r.dataset.sym)});document.querySelectorAll("[data-star]").forEach(b=>b.onclick=e=>{e.stopPropagation();const s=stocks.find(x=>x.symbol===b.dataset.star);if(s){s.favorite=!s.favorite;save();render()}});document.querySelectorAll("[data-remove]").forEach(b=>b.onclick=e=>{e.stopPropagation();stocks=stocks.filter(x=>x.symbol!==b.dataset.remove);save();if(selected===b.dataset.remove)selected=null;render()});renderDetails()}
+
+async function fetchUserStockHistoryV11(symbol){
+  const s=String(symbol||"").toUpperCase().replace(/\.NS$/,"");
+  if(!s) return null;
+
+  const cacheKey="ksd_history_"+s;
+  const cacheMaxAge=6*60*60*1000;
+  try{
+    const cached=JSON.parse(localStorage.getItem(cacheKey)||"null");
+    if(cached && Array.isArray(cached.points) && cached.points.length>1 &&
+       Date.now()-Number(cached.savedAt||0)<cacheMaxAge){
+      return cached.points;
+    }
+  }catch(e){}
+
+  const save=(points)=>{
+    try{
+      localStorage.setItem(cacheKey,JSON.stringify({
+        savedAt:Date.now(),
+        points
+      }));
+    }catch(e){}
+    return points;
+  };
+
+  // Stooq provides daily CSV and is useful as a browser-side fallback.
+  try{
+    const u=`https://stooq.com/q/d/l/?s=${encodeURIComponent(s.toLowerCase()+".in")}&d1=20000101&d2=20991231&i=d`;
+    const r=await fetch(u,{cache:"no-store"});
+    if(r.ok){
+      const text=await r.text();
+      const lines=text.trim().split(/\r?\n/);
+      const points=[];
+      for(let i=1;i<lines.length;i++){
+        const cols=lines[i].split(",");
+        if(cols.length<5) continue;
+        const d=cols[0], c=Number(cols[4]);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!Number.isFinite(c)||c<=0) continue;
+        const t=Math.floor(new Date(d+"T00:00:00Z").getTime()/1000);
+        if(Number.isFinite(t)) points.push({t,c:Number(c.toFixed(4)),v:0});
+      }
+      if(points.length>1) return save(points);
+    }
+  }catch(e){
+    console.warn("Stooq history unavailable for "+s,e);
+  }
+
+  // Yahoo is a second fallback. Some browsers/network environments block
+  // cross-origin Yahoo requests, so failure here is intentionally non-fatal.
+  try{
+    const p1=Math.floor((Date.now()-3660*86400000)/1000);
+    const p2=Math.floor(Date.now()/1000);
+    const u=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}.NS?period1=${p1}&period2=${p2}&interval=1d&events=history&includeAdjustedClose=true`;
+    const r=await fetch(u,{cache:"no-store"});
+    if(!r.ok) throw Error("HTTP "+r.status);
+    const j=await r.json(), q=j?.chart?.result?.[0];
+    const ts=q?.timestamp||[], cl=q?.indicators?.quote?.[0]?.close||[];
+    const points=[];
+    for(let i=0;i<ts.length;i++){
+      const c=Number(cl[i]);
+      if(Number.isFinite(c)&&c>0) points.push({t:Number(ts[i]),c:Number(c.toFixed(4)),v:0});
+    }
+    if(points.length>1) return save(points);
+  }catch(e){
+    console.warn("Yahoo history unavailable for "+s,e);
+  }
+  return null;
+}
+
+function applyUserHistoryV11(d,points){
+  if(!d||!Array.isArray(points)||points.length<2) return false;
+  points=points.filter(p=>Number.isFinite(Number(p.t))&&Number(p.c)>0)
+               .sort((a,b)=>a.t-b.t);
+  if(points.length<2) return false;
+
+  d.points=points;
+  const now=Date.now();
+  const pick=days=>{
+    const target=now-days*86400000;
+    let val=points[0].c;
+    for(const p of points){
+      if(p.t*1000<=target) val=p.c;
+      else break;
+    }
+    return val;
+  };
+
+  const last=Number(d.last);
+  for(const [k,days] of [["m1",30],["m3",91],["m6",182],["m9",274],["y1",365],["y5",1826]]){
+    const hp=pick(days);
+    if(Number.isFinite(hp)&&hp>0){
+      d[k+"Price"]=hp;
+      if(Number.isFinite(last)&&last>0) d[k]=((last-hp)/hp)*100;
+    }
+  }
+  d.allTimePrice=Number(points[0].c);
+  if(Number.isFinite(last)&&d.allTimePrice>0)
+    d.allTime=((last-d.allTimePrice)/d.allTimePrice)*100;
+  d.historySource="Stooq/Yahoo browser fallback";
+  return true;
+}
+
+async function hydrateMissingWatchlistHistoryV11(){
+  const list=(typeof getWatchlist==="function"?getWatchlist():[]);
+  if(!Array.isArray(list)||!list.length) return;
+
+  const jobs=list.map(async sym=>{
+    const d=typeof get==="function"?get({symbol:sym}):null;
+    if(!d) return false;
+
+    // Only fetch when the cached server snapshot lacks usable history.
+    const usable=Array.isArray(d.points)&&d.points.length>1 &&
+      ["m1","m3","m6","m9","y1","y5","allTime"].some(k=>Number.isFinite(Number(d[k])));
+    if(usable) return false;
+
+    const points=await fetchUserStockHistoryV11(sym);
+    if(!points) return false;
+    return applyUserHistoryV11(d,points);
+  });
+
+  const changed=(await Promise.all(jobs)).some(Boolean);
+  if(changed && typeof render==="function") render();
+}
+
+function openDetail(sym){
+  selected=sym;
+  const d=get({symbol:sym});
+  if(d && (!Array.isArray(d.points)||d.points.length<2)){
+    const points=await fetchUserStockHistoryV10(sym);
+    if(points){ applyUserHistoryV10(d,points); render(); }
+  }
+  renderDetails();
+  document.getElementById("details").scrollIntoView({behavior:"smooth",block:"nearest"})}
+function renderDetails(){const box=document.getElementById("details");if(!selected){box.innerHTML='<div class="empty">Select a stock from the table.</div>';return}const meta=stocks.find(s=>s.symbol===selected)||{symbol:selected,name:selected},d=get(meta);if(!d){box.innerHTML=`<div class="empty">${esc(selected)} has no current cached data yet.</div>`;return}const tr=track(selected,d.last),since=tr?.price?(d.last/tr.price-1)*100:null;box.innerHTML=`<div class="details open"><div class="detail-top"><div><div class="detail-title">${esc(d.name||meta.name)} <span class="ticker">${esc(selected)}</span></div><div class="mini">${esc(d.sector||"Sector unavailable")}</div></div><div class="detail-right"><div class="detail-price">₹${fmt(d.last)}</div><div class="${cls(d.today)}">${pct(d.today)} today</div></div></div><div class="metrics"><div class="metric"><span>Tracking price</span><b>₹${fmt(tr?.price)}</b></div><div class="metric"><span>Since tracking</span><b class="${cls(since)}">${pct(since)}</b></div><div class="metric"><span>52W high</span><b>₹${fmt(d.high)}</b></div><div class="metric"><span>52W low</span><b>₹${fmt(d.low)}</b></div><div class="metric"><span>Volume</span><b>${d.volume==null?"—":Number(d.volume).toLocaleString("en-IN")}</b></div><div class="metric"><span>Prev close</span><b>₹${fmt(d.prev)}</b></div><div class="metric"><span>Market cap</span><b>${d.marketCap==null?"—":fmt(d.marketCap)}</b></div><div class="metric"><span>P/E</span><b>${fmt(d.pe)}</b></div><div class="metric"><span>1Y</span><b class="${cls(d.y1)}">${pct(d.y1)}</b></div><div class="metric"><span>5Y</span><b class="${cls(d.y5)}">${pct(d.y5)}</b></div></div><svg class="chart" viewBox="0 0 900 180" preserveAspectRatio="none">${spark(d.points)}</svg><div class="periods">${[["1M","m1"],["3M","m3"],["6M","m6"],["9M","m9"],["1Y","y1"],["5Y","y5"],["All Time","allTime"]].map(([label,key])=>`<div class="period"><span>${label}</span><b>₹${fmt(d[key+"Price"])}</b><span class="${cls(d[key])}">${pct(d[key])}</span></div>`).join("")}</div>`}
+function spark(points){const p=(points||[]).map(x=>Number(x.c)).filter(Number.isFinite).slice(-260);if(p.length<2)return"";const w=900,h=180,pad=8,min=Math.min(...p),max=Math.max(...p),den=max-min||1;const pts=p.map((v,i)=>`${pad+i*(w-2*pad)/(p.length-1)},${h-pad-(v-min)*(h-2*pad)/den}`).join(" ");return `<polyline fill="none" stroke="var(--olive)" stroke-width="2.3" points="${pts}"/>`}
+function populateSearch(){const q=document.getElementById("stockInput").value.trim().toLowerCase(),box=document.getElementById("results");chosen=null;if(!q){box.classList.remove("open");box.innerHTML="";return}const rows=universe().filter(x=>x.symbol.toLowerCase().includes(q)||String(x.name||"").toLowerCase().includes(q)).sort((a,b)=>{const as=a.symbol.toLowerCase().startsWith(q)?0:1,bs=b.symbol.toLowerCase().startsWith(q)?0:1;return as-bs||a.symbol.localeCompare(b.symbol)}).slice(0,8);box.innerHTML=rows.length?rows.map(x=>`<div class="result" data-result="${esc(x.symbol)}"><b>${esc(x.symbol)}</b><span>${esc(x.name||x.symbol)} · ₹${fmt(x.last)}</span></div>`).join(""):`<div class="result"><b>No matching stock</b><span>Try a symbol or part of the company name.</span></div>`;box.classList.add("open");document.querySelectorAll("[data-result]").forEach(e=>e.onclick=()=>{chosen=e.dataset.result;document.getElementById("stockInput").value=chosen;box.classList.remove("open")})}
+function addSelected(){let sym=chosen||document.getElementById("stockInput").value.trim().toUpperCase();const rows=universe();let exact=rows.find(x=>x.symbol===sym)||rows.find(x=>String(x.name||"").toUpperCase()===sym);if(!exact){const q=sym.toLowerCase();exact=rows.find(x=>x.symbol.toLowerCase()===q||String(x.name||"").toLowerCase()===q)}if(!exact){alert("Select a stock from the search suggestions first.");return}sym=exact.symbol;if(!stocks.some(s=>s.symbol===sym)){stocks.push({name:exact.name||sym,symbol:sym});track(sym,exact.last);save();render()}document.getElementById("stockInput").value="";chosen=null;document.getElementById("results").classList.remove("open")}
+function renderMarkets(){const m=data?.markets||{};document.getElementById("markets").innerHTML=["NIFTY 50","SENSEX"].map(k=>{const x=m[k];return `<div class="market"><div class="mhead"><div class="mname">${k}</div><span class="tag">${esc(x?.source||"cached")}</span></div><div class="mval">${x?.last!=null?fmt(x.last):"—"}</div><div class="mchg ${cls(x?.today)}">${pct(x?.today)} · prev ${x?.prev!=null?fmt(x.prev):"—"}</div><div class="mini">${x?.updatedAt?new Date(x.updatedAt).toLocaleString("en-IN"):"Last good cached value"}</div></div>`}).join("")}
+function renderOpportunity(id,arr,showScore=true){document.getElementById(id).innerHTML=(arr||[]).slice(0,8).map(x=>`<div class="moveitem linkish" data-oppsym="${esc(x.symbol)}"><span><b>${esc(x.symbol)}</b><span class="ticker">${esc(x.name||x.symbol)}</span></span><span class="${cls(x.today)}">${pct(x.today)}${showScore?`<span class="ticker">Score ${x.score??"—"}</span>`:""}</span></div>`).join("")||'<div class="empty">No opportunity data in snapshot.</div>'}
+function opportunities(){const arr=universe();renderOpportunity("oppToday",[...arr].sort((a,b)=>(b.today??-Infinity)-(a.today??-Infinity)));renderOpportunity("oppHigh",arr.filter(x=>x.high&&x.last).sort((a,b)=>(b.last/b.high)-(a.last/a.high)));renderOpportunity("oppLow",arr.filter(x=>x.high&&x.low&&x.last).sort((a,b)=>((a.last-a.low)/(a.high-a.low))-((b.last-b.low)/(b.high-b.low))));const gains=[...arr].sort((a,b)=>(b.today??-Infinity)-(a.today??-Infinity)),losers=[...arr].sort((a,b)=>(a.today??Infinity)-(b.today??Infinity)),momentum=[...arr].sort((a,b)=>(b.score??-Infinity)-(a.score??-Infinity)),high=[...arr].filter(x=>x.high&&x.last).sort((a,b)=>(b.last/b.high)-(a.last/a.high));renderMover("gainers",gains);renderMover("losers",losers);renderMover("momentum",momentum,true);renderMover("moversHigh",high,true);document.querySelectorAll("[data-oppsym]").forEach(e=>e.onclick=()=>{const sym=e.dataset.oppsym;if(!stocks.some(s=>s.symbol===sym)){const d=data.opportunities[sym];stocks.push({name:d?.name||sym,symbol:sym});track(sym,d?.last);save();render()}openDetail(sym)})}
+function renderMover(id,arr,score=false){document.getElementById(id).innerHTML=arr.slice(0,8).map(x=>`<div class="moveitem linkish" data-oppsym="${esc(x.symbol)}"><span>${esc(x.symbol)}<span class="ticker">${esc(x.name||"")}</span></span><span class="${cls(x.today)}">${pct(x.today)}${score?`<span class="ticker">${x.score??"—"}</span>`:""}</span></div>`).join("")||'<div class="empty">No data.</div>'}
+const themes={"Dividend":["COALINDIA","IOC","ONGC","NTPC","POWERGRID","BPCL","ITC"],"PSU":["SBIN","BPCL","BEL","BDL","ONGC","NTPC","COALINDIA"],"Defence":["BEL","BDL","HAL","MAZDOCK","GRSE","BEML"],"Railways":["IRCON","RVNL","IRFC","RITES","TITAGARH"],"Infrastructure":["LT","LARSEN","ABB","SIEMENS","RVNL","IRCON"],"Banking":["HDFCBANK","ICICIBANK","SBIN","KOTAKBANK","AXISBANK"],"IT":["TCS","INFY","HCLTECH","WIPRO","TECHM"],"Pharma":["SUNPHARMA","DRREDDY","CIPLA","DIVISLAB"],"Energy":["RELIANCE","ONGC","POWERGRID","BPCL","NTPC"]};
+function categoryRecords(name){const arr=universe();if(["Blue-chip","Large-cap","Mid-cap","Small-cap","Penny (<₹50)"].includes(name))return arr.filter(x=>x.capCategory===name||(!x.capCategory&&name==="Penny (<₹50)"&&x.last<50)).sort((a,b)=>(b.score??-Infinity)-(a.score??-Infinity));const set=new Set(themes[name]||[]);return arr.filter(x=>set.has(x.symbol)).sort((a,b)=>(b.score??-Infinity)-(a.score??-Infinity))}
+function categories(){const names=["Blue-chip","Large-cap","Mid-cap","Small-cap","Penny (<₹50)",...Object.keys(themes)];document.getElementById("categories").innerHTML=names.map(name=>{const a=categoryRecords(name),b=a[0];return `<div class="catcard"><h3>${name}</h3>${b?`<div class="moveitem linkish" data-oppsym="${esc(b.symbol)}"><span><b>${esc(b.symbol)}</b><span class="ticker">${esc(b.name||"")}</span></span><span>₹${fmt(b.last)}</span></div><div class="mini">Today ${pct(b.today)} · 52W ${fmt(b.low)}–${fmt(b.high)} · score ${b.score??"—"}</div>`:'<div class="empty">No matching stock in the current snapshot.</div>'}</div>`}).join("");document.querySelectorAll("[data-oppsym]").forEach(e=>e.onclick=()=>{const sym=e.dataset.oppsym;if(!stocks.some(s=>s.symbol===sym)){const d=data.opportunities[sym];stocks.push({name:d?.name||sym,symbol:sym});track(sym,d?.last);save();render()}openDetail(sym)})}
+function ipoScore(x){let s=0;const rg=Number(x.revenueGrowth),pg=Number(x.profitGrowth),roe=Number(x.roe),roce=Number(x.roce),g=Number(x.gmpPct),sub=Number(x.subscriptionTotal);if(Number.isFinite(rg))s+=Math.max(0,Math.min(10,rg/5+5));if(Number.isFinite(pg))s+=Math.max(0,Math.min(10,pg/5+5));if(Number.isFinite(roe))s+=Math.max(0,Math.min(10,roe/5));if(Number.isFinite(roce))s+=Math.max(0,Math.min(10,roce/5));if(x.pe!=null&&x.industryPe>0)s+=Math.max(0,Math.min(15,(1-(Number(x.pe)-Number(x.industryPe))/Number(x.industryPe))*15));if(Number.isFinite(g))s+=Math.max(0,Math.min(15,g/5));if(Number.isFinite(sub))s+=Math.max(0,Math.min(15,sub/3));if(x.freshIssuePct!=null)s+=Math.min(10,Math.max(0,Number(x.freshIssuePct)/10));return Math.round(Math.min(100,s))}
+function ipoSignal(label,value,type){
+ const text=value==null||value===""?"Not available":String(value);
+ return `<div class="ipo-point"><b>${esc(label)}</b><br>${esc(text)}</div>`;
+}
+function fmtDate(v){
+ if(!v) return "—";
+ const d=new Date(v+(/T|Z/.test(String(v))?"":"T00:00:00+05:30"));
+ if(Number.isNaN(d.getTime())) return esc(String(v));
+ return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+}
+function ipoCard(x){
+ const score=x.score??ipoScore(x), flag=score>=70?"GREEN":score>=45?"YELLOW":"RED";
+ const positives=[], negatives=[];
+ const rg=Number(x.revenueGrowth), pg=Number(x.profitGrowth), roe=Number(x.roe), roce=Number(x.roce);
+ const gp=Number(x.gmpPct), sub=Number(x.subscriptionTotal), pe=Number(x.pe), ipe=Number(x.industryPe);
+ const debt=Number(x.debt), fresh=Number(x.freshIssuePct), promoter=Number(x.promoterHolding);
+
+ if(Number.isFinite(rg) && rg>0) positives.push(ipoSignal("Revenue growth",pct(rg)+" — positive","good"));
+ if(Number.isFinite(pg) && pg>0) positives.push(ipoSignal("Profit growth",pct(pg)+" — positive","good"));
+ if(Number.isFinite(roe) && roe>=15) positives.push(ipoSignal("ROE",pct(roe)+" — healthy","good"));
+ if(Number.isFinite(roce) && roce>=15) positives.push(ipoSignal("ROCE",pct(roce)+" — healthy","good"));
+ if(Number.isFinite(gp) && gp>0) positives.push(ipoSignal("GMP",pct(gp)+" — positive unofficial signal","good"));
+ if(Number.isFinite(sub) && sub>=2) positives.push(ipoSignal("Subscription",sub.toFixed(1)+"× — strong demand","good"));
+ if(Number.isFinite(pe) && Number.isFinite(ipe) && pe>0 && ipe>0 && pe<ipe) positives.push(ipoSignal("Valuation","IPO P/E below industry P/E","good"));
+ if(Number.isFinite(promoter) && promoter>=40) positives.push(ipoSignal("Promoter holding",pct(promoter)+" — meaningful holding","good"));
+ if(Number.isFinite(fresh) && fresh>=50) positives.push(ipoSignal("Fresh issue",pct(fresh)+" — substantial fresh capital","good"));
+
+ if(Number.isFinite(rg) && rg<0) negatives.push(ipoSignal("Revenue growth",pct(rg)+" — declining","bad"));
+ if(Number.isFinite(pg) && pg<0) negatives.push(ipoSignal("Profit growth",pct(pg)+" — declining","bad"));
+ if(Number.isFinite(roe) && roe<10) negatives.push(ipoSignal("ROE",pct(roe)+" — weak","bad"));
+ if(Number.isFinite(roce) && roce<10) negatives.push(ipoSignal("ROCE",pct(roce)+" — weak","bad"));
+ if(Number.isFinite(gp) && gp<0) negatives.push(ipoSignal("GMP",pct(gp)+" — negative unofficial signal","bad"));
+ if(Number.isFinite(sub) && sub<1) negatives.push(ipoSignal("Subscription",sub.toFixed(1)+"× — weak demand","bad"));
+ if(Number.isFinite(pe) && Number.isFinite(ipe) && pe>ipe) negatives.push(ipoSignal("Valuation","IPO P/E above industry P/E","bad"));
+ if(Number.isFinite(debt) && debt>0) negatives.push(ipoSignal("Debt","Debt reported — review leverage","bad"));
+ if(Number.isFinite(fresh) && fresh<30) negatives.push(ipoSignal("Fresh issue",pct(fresh)+" — large OFS component","bad"));
+ if(Number.isFinite(promoter) && promoter<20) negatives.push(ipoSignal("Promoter holding",pct(promoter)+" — relatively low","bad"));
+
+ if(!positives.length) positives.push(ipoSignal("No clear positive signal","Insufficient verified data","good"));
+ if(!negatives.length) negatives.push(ipoSignal("No major negative signal","No flagged issue from available metrics","bad"));
+
+ return `<div class="ipo">
+  <div class="ipo-head">
+   <div><div class="ipo-title">${esc(x.name||"Unnamed IPO")}</div>
+   <div class="ipo-meta">Price ${esc(x.priceBand||x.issuePrice||"—")} · GMP ${x.gmp!=null?"₹"+fmt(x.gmp):"—"} (${x.gmpPct!=null?pct(x.gmpPct):"—"}) · Lot ${x.lotSize??"—"} · Min investment ${x.minimumInvestment!=null?"₹"+fmt(x.minimumInvestment):"—"}</div></div>
+   <div class="ipo-score-box"><span class="score-badge ${score>=70?"score-green":score>=45?"score-amber":"score-red"}">${score}</span><small>/ 100</small></div>
+  </div>
+  <div class="ipo-good"><h4>🟢 POSITIVES</h4><div class="ipo-points">${positives.join("")}</div></div>
+  <div class="ipo-bad"><h4>🔴 NEGATIVES / RISKS</h4><div class="ipo-points">${negatives.join("")}</div></div>
+  <div class="ipo-schedule">
+   <div class="ipo-schedule-title">📅 IPO TIMELINE <span>tentative</span></div>
+   <div class="ipo-schedule-grid">
+    <div><span>Start</span><b>${fmtDate(x.openDate)}</b></div>
+    <div><span>Bidding ends</span><b>${fmtDate(x.closeDate)}</b></div>
+    <div><span>Allotment</span><b>${fmtDate(x.allotmentDate)}</b></div>
+    <div><span>Listing</span><b>${fmtDate(x.listingDate)}</b></div>
+   </div>
+  </div>
+  <details class="ipo-full">
+   <summary>Full IPO details</summary>
+   <div class="ipo-facts">
+    <div class="ipo-fact"><b>Issue size</b>${x.issueSize!=null?"₹"+fmt(x.issueSize):"—"}</div>
+    <div class="ipo-fact"><b>Market cap</b>${x.marketCap!=null?"₹"+fmt(x.marketCap):"—"}</div>
+    <div class="ipo-fact"><b>Revenue growth</b>${pct(x.revenueGrowth)}</div>
+    <div class="ipo-fact"><b>Profit growth</b>${pct(x.profitGrowth)}</div>
+    <div class="ipo-fact"><b>ROE</b>${pct(x.roe)}</div>
+    <div class="ipo-fact"><b>ROCE</b>${pct(x.roce)}</div>
+    <div class="ipo-fact"><b>Debt</b>${x.debt??"—"}</div>
+    <div class="ipo-fact"><b>IPO P/E</b>${x.pe??"—"}</div>
+    <div class="ipo-fact"><b>Industry P/E</b>${x.industryPe??"—"}</div>
+    <div class="ipo-fact"><b>Promoter holding</b>${x.promoterHolding!=null?pct(x.promoterHolding):"—"}</div>
+    <div class="ipo-fact"><b>Fresh issue</b>${x.freshIssuePct!=null?pct(x.freshIssuePct):"—"}</div>
+    <div class="ipo-fact"><b>OFS</b>${x.ofsPct!=null?pct(x.ofsPct):"—"}</div>
+    <div class="ipo-fact"><b>Retail</b>${x.retailSubscription??"—"}×</div>
+    <div class="ipo-fact"><b>QIB</b>${x.qibSubscription??"—"}×</div>
+    <div class="ipo-fact"><b>NII/HNI</b>${x.niiSubscription??"—"}×</div>
+    <div class="ipo-fact"><b>Listing potential</b>${esc(x.listingGainPotential||"—")}</div>
+    <div class="ipo-fact"><b>Long-term potential</b>${esc(x.longTermPotential||"—")}</div>
+    <div class="ipo-fact"><b>Risk</b>${esc(x.risk||"—")}</div>
+   </div>
+  </details>
+ </div>`;
+}
+function renderIpos(){const rows=Array.isArray(ipoData?.ipos)?ipoData.ipos:[];document.getElementById("ipos").innerHTML=rows.length?`<div class="ipo-grid">${rows.map(ipoCard).join("")}</div>`:'<div class="empty">No verified IPO snapshot available.</div>'}
+function setQuote(){const q=quotes[new Date().getDate()%quotes.length];document.getElementById("quoteText").textContent=`“${q[0]}”`;document.getElementById("quoteAuthor").textContent=`— ${q[1]}`}
+async function load(){
+  const status=document.getElementById("status");
+  const updated=document.getElementById("updated");
+  try{
+    status.textContent="Loading…";
+
+    // Market and IPO data are deliberately loaded independently.
+    // A temporary IPO failure must never mark the market dashboard unavailable.
+    let marketOK=false, ipoOK=false;
+
+    try{
+      const r=await fetch("data.json?v="+Date.now(),{cache:"no-store"});
+      if(!r.ok) throw Error("market HTTP "+r.status);
+      const fresh=await r.json();
+      if(fresh && fresh.stocks){
+        data=fresh;
+        marketOK=true;
+      }
+    }catch(err){
+      console.error("Market data:",err);
+    }
+
+    try{
+      const i=await fetch("ipo.json?v="+Date.now(),{cache:"no-store"});
+      if(i.ok){
+        const freshIPO=await i.json();
+        if(freshIPO && Array.isArray(freshIPO.ipos)){
+          ipoData=freshIPO;
+          ipoOK=true;
+        }
+      }
+    }catch(err){
+      console.error("IPO data:",err);
+    }
+
+    if(!marketOK){
+      status.textContent="Data unavailable";
+      updated.textContent="—";
+      return;
+    }
+
+    status.textContent=data.stockFailures?.length
+      ?"Partial / cached"
+      :(ipoOK?"Live snapshot":"Market live · IPO unavailable");
+
+    updated.textContent=data.updatedAt
+      ?new Date(data.updatedAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})
+      :"—";
+
+    const arr=stocks.map(s=>({s,d:get(s)})).filter(x=>x.d?.today!=null);
+    const best=arr.reduce((a,b)=>!a||b.d.today>a.d.today?b:a,null);
+    const worst=arr.reduce((a,b)=>!a||b.d.today<a.d.today?b:a,null);
+
+    document.getElementById("best").textContent=best
+      ?`${best.s.symbol} ${pct(best.d.today)}`:"—";
+    document.getElementById("worst").textContent=worst
+      ?`${worst.s.symbol} ${pct(worst.d.today)}`:"—";
+
+    const bt=stocks.map(s=>{
+      const d=get(s);
+      if(!d?.last)return null;
+      const t=track(s.symbol,d.last);
+      return t?.price?{s,v:(d.last/t.price-1)*100}:null;
+    }).filter(Boolean).sort((a,b)=>b.v-a.v)[0];
+
+    document.getElementById("bestTrack").textContent=bt
+      ?`${bt.s.symbol} ${pct(bt.v)}`:"—";
+
+    document.getElementById("marketStatus").textContent=
+      data.markets?.["NIFTY 50"]?"Open / cached":"No data";
+
+    try{ renderMarkets(); }catch(e){ console.error("Market render:",e); }
+    try{ render(); }catch(e){ console.error("Watchlist render:",e); }
+    try{ opportunities(); }catch(e){ console.error("Opportunity render:",e); }
+    try{ categories(); }catch(e){ console.error("Category render:",e); }
+
+    if(ipoOK && typeof renderIpos==="function"){
+      try{ renderIpos(); }catch(e){
+        console.error("IPO render:",e);
+        const el=document.getElementById("ipos");
+        if(el) el.innerHTML='<div class="empty">IPO data loaded, but the IPO display needs a refresh.</div>';
+      }
+    }
+    else {
+      const el=document.getElementById("ipos");
+      if(el) el.innerHTML='<div class="empty">IPO data temporarily unavailable. Market data is still active.</div>';
+    }
+  }catch(e){
+    console.error("Dashboard load:",e);
+    status.textContent="Data unavailable";
+  }
+}
+
+document.getElementById("refresh").onclick=load;document.getElementById("sort").onchange=render;document.getElementById("filter").onchange=render;document.getElementById("theme").onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"":"dark";localStorage.setItem("ksd7-theme",document.documentElement.dataset.theme)};if(localStorage.getItem("ksd7-theme")==="dark")document.documentElement.dataset.theme="dark";
+document.getElementById("stockInput").addEventListener("input",populateSearch);document.getElementById("stockInput").addEventListener("focus",populateSearch);document.getElementById("stockInput").addEventListener("keydown",e=>{if(e.key==="Enter")addSelected()});document.addEventListener("click",e=>{if(!e.target.closest(".searchbar"))document.getElementById("results").classList.remove("open")});document.getElementById("add").onclick=addSelected;setQuote();load();
+</script>
+
+
+
+<nav class="bottom-nav" id="bottomNav" aria-label="Primary navigation">
+  <button type="button" data-tab="market" aria-label="Market"><b>⌂</b>Market</button>
+  <button type="button" data-tab="watchlist" aria-label="Watchlist"><b>★</b>Watchlist</button>
+  <button type="button" data-tab="movers" aria-label="Movers"><b>↗</b>Movers</button>
+  <button type="button" data-tab="discover" aria-label="Discover"><b>⌕</b>Discover</button>
+  <button type="button" data-tab="ipo" aria-label="IPO"><b>▣</b>IPO</button>
+</nav>
+
+
+<script>
+/* V9.2 IPO: hide already-listed issues and highlight newest/current issues */
+(function(){
+  function ipoDate(x, key){
+    const v = x && (x[key] || x[key.replace(/([A-Z])/g,"_$1").toLowerCase()]);
+    if(!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function ipoState(x){
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const start = ipoDate(x,"openDate");
+    const end = ipoDate(x,"closeDate");
+    const listing = ipoDate(x,"listingDate");
+    const isListed = listing && listing < today;
+    const isCurrent = !isListed && start && end && start <= today && today <= end;
+    const isUpcoming = !isListed && start && start > today;
+    return {isListed,isCurrent,isUpcoming,start,end,listing};
+  }
+
+  function fmtIPODate(d){
+    if(!d) return "—";
+    return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+  }
+
+
+  function ipoStatusV10(x){
+    const today=new Date(); today.setHours(0,0,0,0);
+    const getDate=k=>{
+      const v=x && (x[k] || x[k.replace(/([A-Z])/g,"_$1").toLowerCase()]);
+      if(!v) return null;
+      const d=new Date(v);
+      return Number.isNaN(d.getTime())?null:d;
+    };
+    const open=getDate("openDate"), close=getDate("closeDate");
+    const allot=getDate("allotmentDate"), listing=getDate("listingDate");
+    if(listing && today>=listing) return ["LISTED","listed"];
+    if(close && today>close && allot && (!listing || today<listing)) return ["ALLOTMENT PENDING","allotment"];
+    if(close && today>close && (!allot || today<allot) && (!listing || today<listing)) return ["BIDDING CLOSED","closed"];
+    if(open && close && today>=open && today<=close) return ["LIVE","live"];
+    if(open && today<open) return ["UPCOMING","upcoming"];
+    return ["STATUS UNCONFIRMED","closed"];
+  }
+
+  function ipoDecisionV10(x,score){
+    const pe=num(x.pe), ipe=num(x.industryPe);
+    if(score>=70 && Number.isFinite(pe) && Number.isFinite(ipe) && pe>ipe*1.35) return "SELECTIVE";
+    if(score>=70) return "YES";
+    if(score>=50) return "SELECTIVE";
+    return "NO";
+  }
+
+  function renderIPOSummaryV10(rows){
+    const el=document.getElementById("ipoSummary");
+    if(!el) return;
+    const active=rows.filter(x=>ipoStatusV10(x)[0]!=="LISTED").sort((a,b)=>ipoScore(b)-ipoScore(a));
+    el.innerHTML=active.length ? active.map(x=>{
+      const score=ipoScore(x), st=ipoStatusV10(x), decision=ipoDecisionV10(x,score);
+      const sc=score>=70?"score-green":score>=45?"score-amber":"score-red";
+      return `<tr>
+        <td class="name">${esc(x.name||"Unnamed IPO")}</td>
+        <td><span class="status-badge status-${st[1]}">${st[0]}</span></td>
+        <td><span class="score-badge ${sc}">${score}</span></td>
+        <td><b>${decision}</b></td>
+        <td>${esc(x.listingGainPotential||"—")}</td>
+        <td>${esc(x.longTermPotential||"—")}</td>
+        <td>${esc(x.risk||"—")}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="7"><div class="empty">No active IPO records in the current snapshot.</div></td></tr>`;
+  }
+
+  window.renderIpos = function(){
+    const all = Array.isArray(ipoData?.ipos) ? ipoData.ipos : [];
+    renderIPOSummaryV10(all);
+    const active = all
+      .map(x => ({x, s:ipoState(x)}))
+      .filter(o => !o.s.isListed)
+      .sort((a,b) => {
+        const ad=a.s.start?.getTime() ?? Infinity, bd=b.s.start?.getTime() ?? Infinity;
+        const ac=a.s.isCurrent ? 0 : a.s.isUpcoming ? 1 : 2;
+        const bc=b.s.isCurrent ? 0 : b.s.isUpcoming ? 1 : 2;
+        return ac-bc || ad-bd || String(a.x.name||"").localeCompare(String(b.x.name||""));
+      })
+      .map(o=>o.x);
+
+    const el=document.getElementById("ipos");
+    if(!el) return;
+    if(!active.length){
+      el.innerHTML='<div class="empty">No current or upcoming IPOs in the latest snapshot.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="ipo-grid">' + active.map(function(x){
+      const s=ipoState(x);
+      const score=ipoScore(x);
+      const flag=score>=70?"GREEN":score>=45?"YELLOW":"RED";
+      const cls=s.isCurrent||s.isUpcoming?" ipo-new":"";
+      const badge=s.isCurrent?"LIVE IPO":(s.isUpcoming?"UPCOMING":"");
+      const name=esc(x.name||"Unnamed IPO");
+      const statusInfo=ipoStatusV10(x);
+      const statusBadge=`<span class="status-badge status-${statusInfo[1]}">${statusInfo[0]}</span>`;
+      const band=esc(x.priceBand||x.issuePrice||"—");
+      const gmpNum=num(x.gmp);
+      const timeline = `
+        <div class="ipo-schedule">
+          <div class="ipo-schedule-title">📅 IPO TIMELINE <span>published / tentative</span></div>
+          <div class="ipo-schedule-grid">
+            <div><span>Start</span><b>${fmtIPODate(ipoDate(x,"openDate"))}</b></div>
+            <div><span>Bidding ends</span><b>${fmtIPODate(ipoDate(x,"closeDate"))}</b></div>
+            <div><span>Allotment</span><b>${fmtIPODate(ipoDate(x,"allotmentDate"))}</b></div>
+            <div><span>Listing</span><b>${fmtIPODate(ipoDate(x,"listingDate"))}</b></div>
+          </div>
+        </div>`;
+      const pos=[],neg=[];
+      const rg=num(x.revenueGrowth), pg=num(x.profitGrowth), roe=num(x.roe), roce=num(x.roce);
+      const gp=num(x.gmpPct), sub=num(x.subscriptionTotal), pe=num(x.pe), ipe=num(x.industryPe);
+      if(rg!==null) (rg>0?pos:neg).push(ipoSignal("Revenue growth",pct(rg)+(rg>0?" — positive":" — declining")));
+      if(pg!==null) (pg>0?pos:neg).push(ipoSignal("Profit growth",pct(pg)+(pg>0?" — positive":" — declining")));
+      if(roe!==null) { if(roe>=15) pos.push(ipoSignal("ROE",pct(roe)+" — healthy")); else if(roe<10) neg.push(ipoSignal("ROE",pct(roe)+" — weak")); }
+      if(roce!==null) { if(roce>=15) pos.push(ipoSignal("ROCE",pct(roce)+" — healthy")); else if(roce<10) neg.push(ipoSignal("ROCE",pct(roce)+" — weak")); }
+      if(gp!==null) (gp>0?pos:neg).push(ipoSignal("GMP",pct(gp)+(gp>0?" — positive unofficial signal":" — negative unofficial signal")));
+      if(sub!==null) { if(sub>=2) pos.push(ipoSignal("Subscription",sub.toFixed(1)+"× — strong demand")); if(sub<1) neg.push(ipoSignal("Subscription",sub.toFixed(1)+"× — weak demand")); }
+      if(pe!==null && ipe!==null) (pe<ipe?pos:neg).push(ipoSignal("Valuation",pe<ipe?"IPO P/E below industry P/E":"IPO P/E above industry P/E"));
+      if(num(x.promoterHolding)!==null){ const p=num(x.promoterHolding); if(p>=40) pos.push(ipoSignal("Promoter holding",pct(p)+" — meaningful")); if(p<20) neg.push(ipoSignal("Promoter holding",pct(p)+" — relatively low")); }
+      if(num(x.debt)!==null) neg.push(ipoSignal("Debt","Debt reported — review leverage"));
+      if(!pos.length) pos.push(ipoSignal("No clear positive","Insufficient verified data"));
+      if(!neg.length) neg.push(ipoSignal("No major negative","No flagged issue from available metrics"));
+
+      return `<div class="ipo${cls}">
+        ${badge?`<div class="ipo-new-badge">${badge}</div>`:""}
+        <div class="ipo-head"><div>
+          <div class="ipo-title">${name}</div>
+          <div class="ipo-meta">Price ${band} · GMP ${gmpNum===null?"—":price(gmpNum)} (${x.gmpPct==null?"—":pct(x.gmpPct)}) · Lot ${esc(x.lotSize??"—")} · Min ${x.minimumInvestment==null?"—":price(x.minimumInvestment)}</div>
+        </div><div class="ipo-score"><b>${score}/100</b><span>${flag}</span></div></div>
+        ${timeline}
+        <div class="ipo-good"><h4>🟢 POSITIVES</h4><div class="ipo-points">${pos.join("")}</div></div>
+        <div class="ipo-bad"><h4>🔴 NEGATIVES / RISKS</h4><div class="ipo-points">${neg.join("")}</div></div>
+        <details class="ipo-full"><summary>Full IPO details</summary>
+          <div class="ipo-facts">
+            <div class="ipo-fact"><b>Issue size</b>${x.issueSize==null?"—":price(x.issueSize)}</div>
+            <div class="ipo-fact"><b>Market cap</b>${x.marketCap==null?"—":price(x.marketCap)}</div>
+            <div class="ipo-fact"><b>Revenue growth</b>${pct(x.revenueGrowth)}</div>
+            <div class="ipo-fact"><b>Profit growth</b>${pct(x.profitGrowth)}</div>
+            <div class="ipo-fact"><b>ROE</b>${pct(x.roe)}</div>
+            <div class="ipo-fact"><b>ROCE</b>${pct(x.roce)}</div>
+            <div class="ipo-fact"><b>Debt</b>${esc(x.debt??"—")}</div>
+            <div class="ipo-fact"><b>IPO P/E</b>${x.pe??"—"}</div>
+            <div class="ipo-fact"><b>Industry P/E</b>${x.industryPe??"—"}</div>
+            <div class="ipo-fact"><b>Promoter holding</b>${x.promoterHolding==null?"—":pct(x.promoterHolding)}</div>
+            <div class="ipo-fact"><b>Fresh issue</b>${x.freshIssuePct==null?"—":pct(x.freshIssuePct)}</div>
+            <div class="ipo-fact"><b>OFS</b>${x.ofsPct==null?"—":pct(x.ofsPct)}</div>
+            <div class="ipo-fact"><b>Retail</b>${x.retailSubscription??"—"}×</div>
+            <div class="ipo-fact"><b>QIB</b>${x.qibSubscription??"—"}×</div>
+            <div class="ipo-fact"><b>NII/HNI</b>${x.niiSubscription??"—"}×</div>
+            <div class="ipo-fact"><b>Listing potential</b>${esc(x.listingGainPotential??"—")}</div>
+            <div class="ipo-fact"><b>Long-term potential</b>${esc(x.longTermPotential??"—")}</div>
+            <div class="ipo-fact"><b>Risk</b>${esc(x.risk??"—")}</div>
+          </div>
+        </details>
+      </div>`;
+    }).join("") + '</div>';
+  };
+
+  /* Patch initial render after the original dashboard loader runs. */
+  const originalLoad = window.load;
+  setTimeout(function(){
+    try{ if(window.renderIpos) window.renderIpos(); }
+    catch(e){ console.error("IPO secondary render:",e); }
+  }, 0);
+})();
+</script>
+
+
+<script>
+(function(){
+  const valid = new Set(["market","watchlist","movers","discover","ipo"]);
+
+  function activate(tab, push){
+    if(!valid.has(tab)) tab="market";
+    document.querySelectorAll("[data-screen]").forEach(function(el){
+      el.classList.toggle("active", el.dataset.screen===tab);
+      el.classList.add("app-screen");
+    });
+    document.querySelectorAll("#bottomNav [data-tab]").forEach(function(btn){
+      const on=btn.dataset.tab===tab;
+      btn.classList.toggle("active",on);
+      btn.setAttribute("aria-current",on?"page":"false");
+    });
+    if(push && location.hash!=="#"+tab){
+      history.pushState({tab:tab},"","#"+tab);
+    }
+    window.scrollTo(0,0);
+  }
+
+  document.querySelectorAll("#bottomNav [data-tab]").forEach(function(btn){
+    btn.addEventListener("click",function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      activate(btn.dataset.tab,true);
+    },{passive:false});
+  });
+
+  window.addEventListener("popstate",function(){
+    activate(location.hash.slice(1)||"market",false);
+  });
+  window.addEventListener("hashchange",function(){
+    activate(location.hash.slice(1)||"market",false);
+  });
+
+  activate(location.hash.slice(1)||"market",false);
+})();
+</script>
+
+
+
+<script>
+/* V9.4: isolated Android tabs */
+(function(){
+  const valid=new Set(["market","watchlist","movers","discover","ipo"]);
+
+  function activate(tab,push){
+    if(!valid.has(tab)) tab="market";
+    document.querySelectorAll("[data-screen]").forEach(el=>{
+      el.classList.add("app-screen");
+      el.classList.toggle("active",el.dataset.screen===tab);
+    });
+    document.querySelectorAll("#bottomNav [data-tab]").forEach(btn=>{
+      const on=btn.dataset.tab===tab;
+      btn.classList.toggle("active",on);
+      btn.setAttribute("aria-current",on?"page":"false");
+    });
+    if(push && location.hash!=="#"+tab)
+      history.pushState({tab},"","#"+tab);
+    window.scrollTo(0,0);
+  }
+
+  document.querySelectorAll("#bottomNav [data-tab]").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      activate(btn.dataset.tab,true);
+    },{passive:false});
+  });
+
+  window.addEventListener("popstate",()=>activate(location.hash.slice(1),false));
+  window.addEventListener("hashchange",()=>activate(location.hash.slice(1),false));
+  activate(location.hash.slice(1)||"market",false);
+})();
+</script>
+
+</body>
+</html>
