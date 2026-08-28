@@ -1,41 +1,77 @@
-name: Update market data
+name: Update Market Data
 
 on:
   workflow_dispatch:
 
   schedule:
     # Every 5 minutes, Monday-Friday.
-    # The updater itself skips unnecessary runs outside useful market hours.
+    # GitHub may delay scheduled workflows; this is not guaranteed to
+    # execute exactly every 5 minutes.
     - cron: "2-57/5 * * * 1-5"
 
 permissions:
   contents: write
 
+concurrency:
+  group: market-data-update
+  cancel-in-progress: false
+
 jobs:
-  update-data:
+  update:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
+          cache: "pip"
 
-      - name: Fetch market data
-        run: python updater.py
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
 
-      - name: Commit data snapshot
+      - name: Update market data
+        run: |
+          python updater.py
+
+      - name: Show generated data timestamp
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data.json")
+
+          if not path.exists():
+              raise SystemExit("ERROR: data.json was not generated")
+
+          data = json.loads(path.read_text(encoding="utf-8"))
+
+          print("data.json updatedAt:", data.get("updatedAt"))
+          print("stockFailures:", data.get("stockFailures", []))
+          print("stocks:", len(data.get("stocks", [])))
+          print("markets:", len(data.get("markets", {})))
+          PY
+
+      - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data.json nse_cache ipo.json || true
+          git add data.json nse_cache ipo.json
 
           if git diff --cached --quiet; then
-            echo "No data changes."
+            echo "No data changes to commit."
           else
             git commit -m "Update market data"
             git push
