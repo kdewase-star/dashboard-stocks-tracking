@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#5d6b35">
-<title>Kunal's Stock Dashboard V11.0</title>
+<title>Kunal's Stock Dashboard V12.0</title>
 <style>
 :root{--olive:#5d6b35;--olive2:#78884a;--olive3:#eef1e3;--bg:#f5f7f1;--panel:#fff;--text:#1f2919;--muted:#6d7668;--border:#dce2d4;--good:#2f7d32;--bad:#b23a35;--gold:#9a7610;--shadow:0 4px 18px rgba(39,53,29,.07)}
 [data-theme=dark]{--bg:#11170e;--panel:#192114;--text:#edf2e7;--muted:#a7b19d;--border:#34402f;--olive:#95aa62;--olive2:#b1c57a;--olive3:#26311f;--good:#76c67a;--bad:#ff7b72;--gold:#e1bf57;--shadow:0 4px 18px rgba(0,0,0,.2)}
@@ -301,39 +301,47 @@ function applyUserHistoryV11(d,points){
   return true;
 }
 
-async function hydrateMissingWatchlistHistoryV11(){
+async function hydrateMissingWatchlistHistoryV12(){
   const list=Array.isArray(stocks)?stocks:[];
-  if(!Array.isArray(list)||!list.length) return;
-
-  const jobs=list.map(async sym=>{
-    const d=typeof get==="function"?get({symbol:sym}):null;
-    if(!d){
+  if(!list.length || !data) return;
+  const jobs=list.map(async item=>{
+    const sym=String(item?.symbol||item||"").trim().toUpperCase();
+    if(!sym) return false;
+    let record=data?.stocks?.[sym] || data?.opportunities?.[sym] || null;
+    if(!record){
       if(!data.stocks || typeof data.stocks!=="object") data.stocks={};
-      data.stocks[sym]={symbol:sym,name:(list.find(x=>x.symbol===sym)||{}).name||sym};
+      record=data.stocks[sym]={name:item?.name||sym,last:null,points:[]};
     }
-    const record=data.stocks[sym]||d;
-
-    // Only fetch when the cached server snapshot lacks usable history.
-    const usable=Array.isArray(record.points)&&record.points.length>1 &&
-      ["m1","m3","m6","m9","y1","y5","allTime"].some(k=>Number.isFinite(Number(d[k])));
-    if(usable) return false;
-
+    const hasPeriods=["m1","m3","m6","m9","y1","y5","allTime"].some(k=>Number.isFinite(Number(record[k])) && Number(record[k])!==0);
+    const hasHistory=Array.isArray(record.points) && record.points.length>1;
+    if(hasHistory && hasPeriods) return false;
     const points=await fetchUserStockHistoryV11(sym);
     if(!points) return false;
-    return applyUserHistoryV11(record,points);
+    return applyUserHistoryV12(record,points);
   });
-
   const changed=(await Promise.all(jobs)).some(Boolean);
   if(changed && typeof render==="function") render();
 }
 
+function applyUserHistoryV12(d,points){
+  if(!d || !Array.isArray(points) || points.length<2) return false;
+  points=points.filter(p=>Number.isFinite(Number(p.t))&&Number(p.c)>0).sort((a,b)=>a.t-b.t);
+  if(points.length<2) return false;
+  d.points=points;
+  if(!Number.isFinite(Number(d.last)) || Number(d.last)<=0) d.last=Number(points.at(-1).c);
+  if(!Number.isFinite(Number(d.prev)) || Number(d.prev)<=0) d.prev=Number(points.at(-2)?.c||points.at(-1).c);
+  if(d.today==null && d.prev>0) d.today=((d.last/d.prev)-1)*100;
+  const now=Date.now();
+  const pick=days=>{const target=now-days*86400000;let val=points[0].c;for(const p of points){if(p.t*1000<=target) val=p.c;else break;}return val;};
+  for(const [k,days] of [["m1",30],["m3",91],["m6",182],["m9",274],["y1",365],["y5",1826]]){const hp=pick(days);if(Number.isFinite(hp)&&hp>0){d[k+"Price"]=hp;d[k]=d.last>0?((d.last-hp)/hp)*100:null;}}
+  d.allTimePrice=Number(points[0].c); d.allTime=d.allTimePrice>0?((d.last-d.allTimePrice)/d.allTimePrice)*100:null; d.historySource="Browser historical fallback"; return true;
+}
+
 async function openDetail(sym){
-  selected=sym;
-  const d=get({symbol:sym});
-  if(d && (!Array.isArray(d.points)||d.points.length<2)){
-    const points=await fetchUserStockHistoryV11(sym);
-    if(points){ applyUserHistoryV11(d,points); render(); }
-  }
+  selected=String(sym||"").toUpperCase();
+  let d=get({symbol:selected});
+  if(!d){data.stocks=data.stocks||{};d=data.stocks[selected]={name:(stocks.find(x=>x.symbol===selected)||{}).name||selected,last:null,points:[]};}
+  if(!Array.isArray(d.points)||d.points.length<2){const points=await fetchUserStockHistoryV11(selected);if(points){applyUserHistoryV12(d,points);render();}}
   renderDetails();
   document.getElementById("details").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
@@ -528,7 +536,7 @@ async function load(){
 }
 
 document.getElementById("refresh").onclick=load;document.getElementById("sort").onchange=render;document.getElementById("filter").onchange=render;document.getElementById("theme").onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"":"dark";localStorage.setItem("ksd7-theme",document.documentElement.dataset.theme)};if(localStorage.getItem("ksd7-theme")==="dark")document.documentElement.dataset.theme="dark";
-document.getElementById("stockInput").addEventListener("input",populateSearch);document.getElementById("stockInput").addEventListener("focus",populateSearch);document.getElementById("stockInput").addEventListener("keydown",e=>{if(e.key==="Enter")addSelected()});document.addEventListener("click",e=>{if(!e.target.closest(".searchbar"))document.getElementById("results").classList.remove("open")});document.getElementById("add").onclick=addSelected;setQuote();load().then(()=>setTimeout(()=>hydrateMissingWatchlistHistoryV11(),300));
+document.getElementById("stockInput").addEventListener("input",populateSearch);document.getElementById("stockInput").addEventListener("focus",populateSearch);document.getElementById("stockInput").addEventListener("keydown",e=>{if(e.key==="Enter")addSelected()});document.addEventListener("click",e=>{if(!e.target.closest(".searchbar"))document.getElementById("results").classList.remove("open")});document.getElementById("add").onclick=addSelected;setQuote();load().then(()=>setTimeout(()=>hydrateMissingWatchlistHistoryV12(),500));
 </script>
 
 

@@ -1,4 +1,4 @@
-const CACHE = "kunal-stocks-v10";
+const CACHE = "kunal-stocks-v12";
 
 const APP_SHELL = [
   "./",
