@@ -34,12 +34,10 @@ jobs:
           pip install "nse[server]" requests
 
       - name: Update market data
-        run: |
-          python updater.py
+        run: python updater.py
 
       - name: Update IPO data
-        run: |
-          python ipo_updater.py
+        run: python ipo_updater.py
 
       - name: Validate generated data
         run: |
@@ -47,24 +45,21 @@ jobs:
           import json
           from pathlib import Path
 
-          data = json.loads(Path("data.json").read_text(encoding="utf-8"))
-          ipo = json.loads(Path("ipo.json").read_text(encoding="utf-8"))
+          data=json.loads(Path("data.json").read_text(encoding="utf-8"))
+          ipo=json.loads(Path("ipo.json").read_text(encoding="utf-8"))
+          history=json.loads(Path("history-cache.json").read_text(encoding="utf-8"))
 
-          if not isinstance(data, dict):
-              raise SystemExit("ERROR: data.json is not an object")
-          if not isinstance(data.get("stocks", {}), (dict, list)):
-              raise SystemExit("ERROR: data.json stocks is invalid")
-          if not isinstance(ipo.get("ipos", []), list):
-              raise SystemExit("ERROR: ipo.json ipos is invalid")
+          if not isinstance(data,dict): raise SystemExit("data.json invalid")
+          if not isinstance(ipo.get("ipos"),list) or not ipo["ipos"]:
+              raise SystemExit("IPO snapshot empty; refusing to publish")
+          if not isinstance(history.get("stocks"),dict):
+              raise SystemExit("history-cache.json invalid")
 
-          ipo_count = len(ipo.get("ipos", []))
-          if ipo_count == 0:
-              raise SystemExit("ERROR: IPO snapshot is empty; refusing to publish empty IPO data")
-
-          print("Market updated:", data.get("updatedAt"))
-          print("Stock failures:", data.get("stockFailures", []))
-          print("IPO updated:", ipo.get("updatedAt"))
-          print("IPO count:", ipo_count)
+          print("Market:",data.get("updatedAt"))
+          print("Market failures:",data.get("stockFailures",[]))
+          print("IPO updated:",ipo.get("updatedAt"))
+          print("IPO count:",len(ipo["ipos"]))
+          print("History cache symbols:",len(history["stocks"]))
           PY
 
       - name: Commit updated data
@@ -77,6 +72,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No data changes to commit."
           else
-            git commit -m "Update market and IPO data"
+            git commit -m "Update market, history and IPO data"
             git push
           fi
