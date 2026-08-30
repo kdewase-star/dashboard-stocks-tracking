@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "nse[server]" requests
+          pip install "nse[server]" requests beautifulsoup4
 
       - name: Update market data
         run: python updater.py
