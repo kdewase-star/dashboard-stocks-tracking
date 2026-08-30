@@ -1,39 +1,52 @@
-IPO Dashboard Fix v13
-======================
+DASHBOARD IPO FIX V14
+=====================
 
-This ZIP fixes the two IPO issues discussed:
+This package is intentionally a SAFE PATCH, not a replacement dashboard.
 
-1. SME minimum investment
-   Paluck Technologies:
-   - Price: ₹46–₹48
-   - Lot: 3,000 shares
-   - Retail minimum: 2 lots
-   - Shares required: 6,000
-   - Investment: ₹2.76L–₹2.88L
+Why:
+The current repository's ipo_updater.py was overwritten and now contains
+only Paluck Technologies. Replacing it with another hard-coded list would
+repeat the same problem.
 
-2. Analysis columns
-   Listing Gains, Long Term and Risk are now read from independent
-   fields:
-     analysis.listingGains
-     analysis.longTerm
-     analysis.risk
+V14 instead discovers the current IPO universe dynamically and enriches
+each IPO from its detail page.
 
 Files:
-- ipo_updater.py       Replace your existing updater.
-- ipo_renderer_fix.js  Add/replace the IPO rendering function.
-- ipo_fix.css          Add to the <style> section of index.html.
+- ipo_updater.py
+- ipo_renderer_fix.js
+- ipo_fix.css
+- requirements-ipo.txt
+- README.txt
 
-Important:
-Do NOT remove your existing IPO records and replace them with only
-the Paluck record in production. Merge the same data model into your
-existing multi-IPO updater. The supplied updater is a structurally
-correct reference for the fix.
+Install:
+pip install -r requirements-ipo.txt
 
-After updating:
-1. Run the GitHub Action that updates IPO data.
-2. Confirm ipo.json contains minInvestmentLow,
-   minInvestmentHigh, retailMinLots and analysis as separate fields.
-3. Hard-refresh the dashboard.
+Run:
+python ipo_updater.py
 
-Do not assign an IPO's score, listing-gain outlook, long-term outlook,
-or risk by copying values between columns.
+Then commit the generated ipo.json.
+
+IMPORTANT:
+1. Remove the old hard-coded IPOS=[...] updater logic.
+2. Keep your existing index.html; merge the renderer/CSS into it.
+3. Remove the "Can Apply?" table column.
+4. The table must use separate fields:
+   analysis.listingGains
+   analysis.longTerm
+   analysis.risk
+5. Do not publish an empty ipo.json if the source fails.
+
+The updater discovers all current/upcoming IPO pages rather than only
+Paluck. It excludes already-listed issues from the active feed.
+
+Paluck:
+- ₹46-₹48
+- 3,000 shares/lot
+- retail minimum 2 lots
+- 6,000 shares
+- ₹2.76L lower-band value
+- ₹2.88L upper-band/cut-off value
+
+The live source may report a single minimum application amount at the
+upper/cut-off band. The dashboard retains both calculated band values
+when price and lot data are available.
