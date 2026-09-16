@@ -1,0 +1,26 @@
+{
+  "name": "US Stock Watcher",
+  "short_name": "US Stocks",
+  "description": "Mobile tracker for a 26-stock US watchlist with dip-threshold monitoring.",
+  "start_url": "./mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f7f1",
+  "theme_color": "#5d6b35",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
