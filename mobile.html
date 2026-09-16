@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5d6b35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="US Stocks">
+<link rel="manifest" href="./mobile-manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<title>US Stock Watcher</title>
+<style>
+:root{--bg:#f5f7f1;--panel:#fff;--text:#1f2919;--muted:#6d7668;--border:#dce2d4;--olive:#5d6b35;--olive2:#78884a;--soft:#eef1e3;--good:#2f7d32;--bad:#b23a35}
+[data-theme=dark]{--bg:#11170e;--panel:#192114;--text:#edf2e7;--muted:#a7b19d;--border:#34402f;--olive:#95aa62;--olive2:#b1c57a;--soft:#26311f;--good:#76c67a;--bad:#ff7b72}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{padding-bottom:84px}.wrap{max-width:760px;margin:auto;padding:12px}
+header{position:sticky;top:0;z-index:20;margin:-12px -12px 12px;padding:11px 12px;background:var(--olive);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 3px 14px rgba(40,50,20,.18)}.brand{display:flex;align-items:center;gap:9px}.brandmark{width:34px;height:34px;border-radius:10px;background:#fff;color:var(--olive);display:grid;place-items:center;font-weight:950}.brand h1{font-size:16px;margin:0}.brand small{display:block;font-size:9px;opacity:.8;margin-top:1px}.actions{display:flex;gap:6px}.iconbtn{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;width:34px;height:34px;font-size:16px}
+.hero{background:linear-gradient(135deg,var(--olive),var(--olive2));color:#fff;border-radius:18px;padding:15px;margin-bottom:10px}.eyebrow{font-size:9px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}.hero h2{font-size:22px;line-height:1.16;margin:5px 0 7px}.hero p{font-size:10px;line-height:1.45;opacity:.88;margin:0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:8px}.stat span{display:block;font-size:8px;opacity:.78;text-transform:uppercase}.stat b{display:block;font-size:15px;margin-top:3px}
+.search{margin:10px 0}.search input{width:100%;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:12px;padding:11px 12px;font:inherit;outline:none}.section{margin-top:11px}.sectionhead{display:flex;align-items:end;justify-content:space-between;gap:8px;margin-bottom:8px}.sectionhead h3{font-size:13px;margin:0}.sectionhead span{font-size:9px;color:var(--muted)}
+.grid{display:grid;gap:8px}.card,.alert{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:11px;box-shadow:0 4px 18px rgba(39,53,29,.07)}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.name{font-weight:900;font-size:12px}.ticker{font-size:9px;color:var(--muted);margin-top:1px}.price{font-size:16px;font-weight:950;text-align:right}.chg{font-size:9px;text-align:right;margin-top:2px}.up{color:var(--good)}.down{color:var(--bad)}.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}.bar{background:var(--soft);border-radius:8px;padding:6px}.bar span{display:block;font-size:7px;color:var(--muted);text-transform:uppercase}.bar b{display:block;font-size:9px;margin-top:2px}
+.alert{display:flex;justify-content:space-between;align-items:center;gap:10px}.badge{border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;white-space:nowrap}.badge.red{background:#fff0f0;color:var(--bad)}.badge.amber{background:#faf4d7;color:#64551a}
+.tabs{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:50;width:min(760px,100%);background:var(--panel);border:1px solid var(--border);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 22px rgba(0,0,0,.1);padding:5px 4px calc(5px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr)}.tabs button{border:0;background:none;color:var(--muted);font:inherit;font-size:9px;font-weight:800;padding:5px 2px}.tabs button b{display:block;font-size:16px;line-height:1.05;margin-bottom:2px}.tabs button.active{color:var(--olive)}
+.screen{display:none}.screen.active{display:block}.chip{white-space:nowrap;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:7px 10px;border-radius:999px;font-size:9px}.chip.active{background:var(--olive);color:#fff;border-color:var(--olive)}.cardbutton{border:0;background:none;color:inherit;text-align:left;padding:0;width:100%}.empty{padding:14px;text-align:center;border:1px dashed var(--border);border-radius:12px;color:var(--muted);font-size:10px;line-height:1.5}.note{font-size:9px;color:var(--muted);line-height:1.5;margin-top:9px}.install{margin-top:9px;border:1px solid var(--olive2);background:var(--soft);border-radius:12px;padding:10px;font-size:9px;line-height:1.45}
+@media(min-width:620px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="brand"><div class="brandmark">$</div><div><h1>US Stock Watcher</h1><small>Mobile market tracker</small></div></div><div class="actions"><button class="iconbtn" id="themeBtn">◐</button><button class="iconbtn" id="refreshBtn">↻</button></div></header>
+
+<section class="hero"><div class="eyebrow">Favourites • dip monitor</div><h2>Watch the pullbacks that matter.</h2><p>Your 26 favourite US stocks, with daily moves and dip-threshold signals.</p><div class="stats"><div class="stat"><span>Watchlist</span><b id="watchCount">26</b></div><div class="stat"><span>Dip alerts</span><b id="alertCount">—</b></div><div class="stat"><span>Updated</span><b id="updatedAt">—</b></div></div></section>
+
+<div class="search"><input id="search" placeholder="Search ticker or company…" autocomplete="off"></div>
+
+<div id="homeScreen" class="screen active">
+<section class="section"><div class="sectionhead"><h3>Dip alerts</h3><span>4% day • 7% 20D DD • 10% sharp</span></div><div id="alerts" class="grid"></div></section>
+<section class="section"><div class="sectionhead"><h3>Favourite stocks</h3><span id="listMeta">Loading…</span></div><div id="stocks" class="grid"></div></section>
+</div>
+
+<div id="alertsScreen" class="screen">
+<section class="section"><div class="sectionhead"><h3>Alert centre</h3><span>Informational thresholds</span></div><div id="allAlerts" class="grid"></div><div class="note">This mobile screen evaluates the latest market-data snapshot on refresh. True background push alerts require a push service/server.</div></section>
+</div>
+
+<div id="marketScreen" class="screen">
+<section class="section"><div class="sectionhead"><h3>Market view</h3><span>Favourite universe</span></div><div class="card"><div class="row"><div><div class="name">Favourites advancing</div><div class="ticker">Latest daily move</div></div><div class="price up" id="advancing">—</div></div><div class="bars"><div class="bar"><span>Biggest dip</span><b id="bigDip">—</b></div><div class="bar"><span>Best day</span><b id="bestDay">—</b></div><div class="bar"><span>Median day</span><b id="medianDay">—</b></div><div class="bar"><span>Data rows</span><b id="dataRows">—</b></div></div></div></section>
+</div>
+
+<div id="settingsScreen" class="screen">
+<section class="section"><div class="sectionhead"><h3>Settings</h3><span>Stored on this device</span></div><div class="card">
+<div class="row"><div><div class="name">4% daily dip alert</div><div class="ticker">Daily change ≤ −4%</div></div><button class="chip active" id="toggle4">ON</button></div><div style="height:8px"></div>
+<div class="row"><div><div class="name">7% drawdown alert</div><div class="ticker">20-day high drawdown ≤ −7%</div></div><button class="chip active" id="toggle7">ON</button></div><div style="height:8px"></div>
+<div class="row"><div><div class="name">10% sharp dip alert</div><div class="ticker">Daily change ≤ −10%</div></div><button class="chip active" id="toggle10">ON</button></div></div>
+<div class="install"><b>Install as an app</b><br>Android Chrome → browser menu → <b>Add to Home screen</b>. The mobile screen opens as a standalone app.</div></section>
+</div>
+</div>
+
+<nav class="tabs"><button class="active" data-screen="homeScreen"><b>⌂</b>Home</button><button data-screen="alertsScreen"><b>!</b>Alerts</button><button data-screen="marketScreen"><b>◒</b>Market</button><button data-screen="settingsScreen"><b>⚙</b>Settings</button></nav>
+
+<script>
+const WATCH=[['ADBE','Adobe',252.82],['GOOGL','Alphabet A',345.70],['AAPL','Apple',334.09],['TEAM','Atlassian A',189.44],['BA','Boeing',206.58],['CRWD','CrowdStrike A',241.99],['GD','General Dynamics',360.95],['INTC','Intel',102.22],['JNJ','Johnson & Johnson',268.24],['LMT','Lockheed Martin',536.78],['MA','Mastercard',568.82],['META','Meta Platforms A',678.32],['MSFT','Microsoft',493.49],['NVDA','NVIDIA',215.68],['OKTA','Okta A',188.74],['PANW','Palo Alto Networks',378.63],['PYPL','PayPal',53.01],['PFE','Pfizer',27.52],['QCOM','Qualcomm',187.65],['SAP','SAP SE',214.91],['NOW','ServiceNow',141.00],['CRM','Salesforce',251.81],['SNOW','Snowflake',333.61],['TSLA','Tesla',360.52],['WDAY','Workday A',188.90],['ZS','Zscaler',195.16]];
+const state={rows:[],filters:{d4:true,d7:true,d10:true},theme:localStorage.getItem('us-stock-theme')||'light'};
+document.documentElement.dataset.theme=state.theme==='dark'?'dark':'light';
+const money=v=>Number.isFinite(v)?'$'+v.toFixed(2):'—';
+const pct=v=>Number.isFinite(v)?(v>=0?'+':'')+v.toFixed(2)+'%':'—';
+const cls=v=>v<0?'down':'up';
+const num=v=>{const n=Number(v);return Number.isFinite(n)?n:null};
+function findTickerObjects(obj,out={}){if(!obj||typeof obj!=='object')return out;if(Array.isArray(obj)){obj.forEach(x=>findTickerObjects(x,out));return out}if(typeof obj.symbol==='string'||typeof obj.ticker==='string'||typeof obj.code==='string'){const t=String(obj.symbol||obj.ticker||obj.code).toUpperCase();if(WATCH.some(w=>w[0]===t))out[t]=Object.assign(out[t]||{},obj)}for(const[k,v]of Object.entries(obj)){if(WATCH.some(w=>w[0]===String(k).toUpperCase())&&v&&typeof v==='object')out[String(k).toUpperCase()]=Object.assign(out[String(k).toUpperCase()]||{},v);else if(v&&typeof v==='object')findTickerObjects(v,out)}return out}
+function parseRows(payload){const found=findTickerObjects(payload,{});return WATCH.map(([t,name,base])=>{const x=found[t]||{};return{t,name,base,price:num(x.price??x.current_price??x.currentPrice??x.last??x.close??x.regularMarketPrice),day:num(x.change_pct??x.changePercent??x.percentChange??x.daily_change_pct??x['1D']??x.oneDay),d20:num(x.drawdown20d??x.drawdown_20d??x.from20dHigh??x.drawdown20)}})}
+function signal(r){const s=[];if(state.filters.d10&&r.day!==null&&r.day<=-10)s.push({level:'sharp',text:'Daily −10%+'});if(state.filters.d4&&r.day!==null&&r.day<=-4)s.push({level:'day',text:'Daily −4%+'});if(state.filters.d7&&r.d20!==null&&r.d20<=-7)s.push({level:'dd',text:'20D high −7%+'});return s}
+function card(r){const s=signal(r);return `<article class="card"><button class="cardbutton" data-ticker="${r.t}"><div class="row"><div><div class="name">${r.name}</div><div class="ticker">${r.t}</div></div><div><div class="price">${money(r.price??r.base)}</div><div class="chg ${cls(r.day??0)}">${r.day===null?'Baseline '+money(r.base):pct(r.day)}</div></div></div><div class="bars"><div class="bar"><span>1D</span><b class="${cls(r.day??0)}">${pct(r.day)}</b></div><div class="bar"><span>20D DD</span><b class="${cls(r.d20??0)}">${pct(r.d20)}</b></div><div class="bar"><span>Alert</span><b>${s.length?s[0].text:'No signal'}</b></div><div class="bar"><span>Ref</span><b>${money(r.base)}</b></div></div></button></article>`}
+function alertCard(r){const s=signal(r)[0];const badge=s?.level==='sharp'?'red':s?.level==='day'?'amber':'green';return `<article class="alert"><div><b>${r.t} · ${r.name}</b><div class="ticker">${money(r.price??r.base)} • daily ${pct(r.day)} • 20D DD ${pct(r.d20)}</div></div><span class="badge ${badge}">${s?.text||'Signal'}</span></article>`}
+function render(){const q=document.getElementById('search').value.trim().toUpperCase();const rows=state.rows.filter(r=>!q||r.t.includes(q)||r.name.toUpperCase().includes(q)).sort((a,b)=>(signal(b).length-signal(a).length)||(a.day??999)-(b.day??999));document.getElementById('stocks').innerHTML=rows.map(card).join('')||'<div class="empty">No matching stocks.</div>';const alerts=state.rows.filter(r=>signal(r).length).sort((a,b)=>signal(b).length-signal(a).length||(a.day??999)-(b.day??999));document.getElementById('alertCount').textContent=alerts.length;document.getElementById('alerts').innerHTML=alerts.length?alerts.slice(0,8).map(alertCard).join(''):'<div class="empty">No dip threshold crossed in the latest snapshot.</div>';document.getElementById('allAlerts').innerHTML=alerts.length?alerts.map(alertCard).join(''):'<div class="empty">No active dip alerts.</div>';const vals=state.rows.map(r=>r.day).filter(v=>v!==null).sort((a,b)=>a-b);document.getElementById('advancing').textContent=vals.length?vals.filter(v=>v>0).length+' / '+vals.length:'—';document.getElementById('bigDip').textContent=vals.length?pct(vals[0]):'—';document.getElementById('bestDay').textContent=vals.length?pct(vals[vals.length-1]):'—';document.getElementById('medianDay').textContent=vals.length?pct(vals[Math.floor(vals.length/2)]):'—';document.getElementById('listMeta').textContent=rows.length+' shown';document.querySelectorAll('[data-ticker]').forEach(b=>b.onclick=()=>alert('Open '+b.dataset.ticker+' in the main dashboard for the full history.'))}
+async function load(){document.getElementById('updatedAt').textContent='Loading…';let payload=null;try{const r=await fetch('./data.json?ts='+Date.now(),{cache:'no-store'});if(r.ok)payload=await r.json()}catch(e){}state.rows=parseRows(payload||{});const got=state.rows.filter(x=>x.price!==null).length;document.getElementById('dataRows').textContent=got+'/'+WATCH.length;document.getElementById('updatedAt').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});render()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(b.dataset.screen).classList.add('active');document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));window.scrollTo(0,0)});
+document.getElementById('search').oninput=render;
+document.getElementById('refreshBtn').onclick=load;
+document.getElementById('themeBtn').onclick=()=>{state.theme=state.theme==='dark'?'light':'dark';localStorage.setItem('us-stock-theme',state.theme);document.documentElement.dataset.theme=state.theme};
+[['toggle4','d4'],['toggle7','d7'],['toggle10','d10']].forEach(([id,k])=>document.getElementById(id).onclick=()=>{state.filters[k]=!state.filters[k];const e=document.getElementById(id);e.textContent=state.filters[k]?'ON':'OFF';e.classList.toggle('active',state.filters[k]);render()});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw-mobile.js').catch(()=>{});
+load();setInterval(load,5*60*1000);
+</script>
+</body>
+</html>
